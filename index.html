@@ -57,6 +57,16 @@
     box-shadow:0 10px 30px -18px rgba(60,45,20,.5), 0 1px 3px rgba(35,46,56,.08);
   }
   canvas{display:block;width:100%;height:auto;cursor:pointer}
+  /* keyboard access to the chart: a transparent DOM grid over the canvas —
+     the canvas paints, these buttons carry the semantics. Geometry mirrors
+     PAD/TOP/TILE (90,44,96 on 660×560) as percentages. */
+  #tile-grid{
+    position:absolute;left:13.64%;top:7.86%;width:72.73%;height:85.71%;
+    display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);
+  }
+  #tile-grid button{background:transparent;border:0;cursor:pointer;border-radius:6px}
+  #tile-grid button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
+  .chart-frame.locked #tile-grid button{cursor:default}
   #scrim{
     position:absolute;inset:0;background:rgba(40,32,16,.32);opacity:0;
     transition:opacity .3s ease;pointer-events:none;
@@ -100,6 +110,10 @@
     font-variant-numeric:tabular-nums;
   }
   .seg button.on{background:var(--accent);color:#fff}
+  .seg button:not(.on):hover{color:var(--accent)}
+  .seg button:focus-visible{outline-offset:-3px}
+  .locked .seg button,.locked .quick button{opacity:.55;cursor:not-allowed}
+  .chart-frame.locked canvas{cursor:default}
   #stake{
     flex:1;min-width:0;font:600 20px/1 system-ui;color:var(--ink);background:var(--paper);
     border:1px solid var(--line);border-radius:9px;padding:9px 12px;text-align:right;
@@ -130,13 +144,15 @@
   }
   #go-btn:hover{filter:brightness(1.06)}
   #go-btn:active{transform:translateY(1px)}
-  #go-btn:disabled{background:#c9c2b2;color:#6d6455;box-shadow:none;cursor:default}
+  #go-btn:disabled{background:#ddd6c4;color:#4a4438;box-shadow:none;cursor:default}
   .hint{font-size:13px;color:var(--ink-soft);line-height:1.5}
   #tide-note{display:none;background:#f3f8fb;border:1px solid #cfe3ec;border-radius:9px;padding:9px 11px;font-size:13px;color:#23576d}
   #tide-note b{font-variant-numeric:tabular-nums}
 
   .log-card{margin-top:16px}
-  table.log{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+  .log-scroll{overflow-x:auto}
+  .course-str{white-space:nowrap}
+  table.log{width:100%;min-width:560px;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
   table.log th{
     text-align:left;padding:8px 12px;color:var(--ink-soft);font:600 11px system-ui;
     letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--line);
@@ -181,8 +197,9 @@
   </header>
 
   <div class="board">
-    <div class="chart-frame">
+    <div class="chart-frame" id="chart-frame">
       <canvas id="chart" width="660" height="560"></canvas>
+      <div id="tile-grid" role="group" aria-label="the chart — plot your course"></div>
       <div id="scrim"></div>
       <div id="banner"><div class="inner" id="banner-inner"><div class="head" id="banner-head"></div><div class="sub" id="banner-sub"></div></div></div>
     </div>
@@ -191,13 +208,13 @@
       <div class="card">
         <h2>The plan <span class="right" id="run-no"></span></h2>
         <div class="slip">
-          <div class="seg" id="mode">
+          <div class="seg" id="mode" role="group" aria-label="game mode">
             <button data-mode="practice" class="on" title="Instant, local seed — for fun">Practice</button>
             <button data-mode="tide" title="The next Bitcoin block decides — provably fair"><svg class="ic"><use href="#i-anchor"/></svg>&nbsp;The Tide</button>
           </div>
           <div>
             <label>Reefs in the water</label>
-            <div class="seg" id="reefs" style="margin-top:5px">
+            <div class="seg" id="reefs" role="group" aria-label="reef count" style="margin-top:5px">
               <button data-r="3">3 reefs</button>
               <button data-r="5" class="on">5 reefs</button>
               <button data-r="7">7 reefs</button>
@@ -228,10 +245,12 @@
   <div class="card log-card">
     <h2>The log <span class="right" id="log-count"></span></h2>
     <div id="log-empty" class="empty">No runs yet. Plot a course, set your stake, and brave the reef.</div>
+    <div class="log-scroll">
     <table class="log" id="log" style="display:none">
       <thead><tr><th>Run</th><th>Course</th><th class="num">Stake</th><th>Outcome</th><th class="num">Net</th><th>Proof</th></tr></thead>
       <tbody></tbody>
     </table>
+    </div>
   </div>
 
   <footer>
@@ -264,7 +283,7 @@ const LS = { purse:'reef-purse', log:'reef-log', pending:'reef-pending', sound:'
 const $ = (id) => document.getElementById(id);
 const MEMPOOL = 'https://mempool.space/testnet4/api';
 const MINUS = '−';
-const COLS = 5, TILE = 96, PAD = 60, TOP = 44;
+const COLS = 5, TILE = 96, PAD = 90, TOP = 44; // grid centered: (660-480)/2
 
 let purse = load(LS.purse, 1000);
 let runNo = load(LS.runs, 0);
@@ -298,11 +317,24 @@ function blip(freq=1320, peak=0.035){
   const o=c.createOscillator(), g=c.createGain(); o.type='triangle'; o.frequency.value=freq;
   o.connect(g); g.connect(c.destination); env(g,t,0.006,peak,0.07); o.start(t); o.stop(t+0.1);
 }
-function stampThud(){
+function stampThud(pitch=1){
   if(!soundOn) return; const c=ac(), t=c.currentTime;
   const o=c.createOscillator(), g=c.createGain(); o.type='sine';
-  o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(140,t+0.06);
+  o.frequency.setValueAtTime(220*pitch,t); o.frequency.exponentialRampToValueAtTime(140*pitch,t+0.06);
   o.connect(g); g.connect(c.destination); env(g,t,0.005,0.09,0.12); o.start(t); o.stop(t+0.16);
+}
+function commitThud(){ // the anchor drops: the course is committed
+  if(!soundOn) return; const c=ac(), t=c.currentTime;
+  const o=c.createOscillator(), g=c.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(130,t); o.frequency.exponentialRampToValueAtTime(60,t+0.22);
+  o.connect(g); g.connect(c.destination); env(g,t,0.01,0.16,0.4); o.start(t); o.stop(t+0.5);
+}
+function sonar(){ // the held breath before the last sounding
+  if(!soundOn) return; const c=ac(), t=c.currentTime;
+  [0,0.45].forEach((d)=>{
+    const o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=1180;
+    o.connect(g); g.connect(c.destination); env(g,t+d,0.01,0.05,0.35); o.start(t+d); o.stop(t+d+0.4);
+  });
 }
 function crunch(){
   if(!soundOn) return; const c=ac(), t=c.currentTime;
@@ -341,81 +373,135 @@ let shake = 0;
 let confetti = [];
 // reveal state: tile -> 'clear' | 'reef'; set during the run's theatre
 let revealed = {};
-let stampAt = {};   // tile -> time it was stamped, for the stamp pop
-let ghostReefs = null; // after a loss: the full reef chart, shown faintly
+let stampAt = {};      // tile -> time it was stamped, for the stamp pop
+let ghostReefs = null; // post-run: the full reef chart, disclosed win or lose
+let telegraph = null;  // {tile, t0}: the sounding lead is over this tile now
+let hoverTile = null;  // pointer hover: ghost pencil X
+let lastRun = null;    // {picks, won}: the previous route stays on the chart
+let flashT = 0;        // red vignette on a wreck
+const redFlash = () => { flashT = performance.now(); };
+// the purse rolls, never teleports
+let shownPurse = purse;
+function tweenPurse(){ /* drawChart eases shownPurse toward purse each frame */ }
+// faux soundings: stable per-tile depth numerals, pure decoration
+const SOUNDINGS = Array.from({length: GRID}, (_, i) => {
+  const a = (i*2654435761 >>> 0);
+  return [{ n: 3 + a%15, dx: 18 + a%40, dy: 24 + (a>>3)%30 },
+          { n: 2 + (a>>5)%12, dx: 42 + (a>>7)%34, dy: 58 + (a>>9)%24 }];
+});
 
+/* The chart's color grammar (from the critics' consensus):
+   graphite = the plan, teal = proven open water, red = danger only.
+   Unknown water is PARCHMENT — a chart doesn't paint what it hasn't sounded. */
+const GRAPHITE = 'rgba(60,55,48,.78)';
+const INKBLUE = '#1e6f8e';
+let lastFrame = performance.now();
 function drawChart(now){
-  const t = now - t0;
+  const t = now - t0, dt = Math.min(50, now - lastFrame); lastFrame = now;
   ctx.clearRect(0,0,W,H);
-  if(shake > 0.3){ ctx.save(); ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake); shake *= 0.93; }
+  if(shake > 0.3){ ctx.save(); ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake); shake *= Math.pow(0.93, dt/16); }
   else { ctx.save(); shake = 0; }
 
-  // parchment
+  // parchment with an edge vignette
   const g = ctx.createLinearGradient(0,0,W,H);
   g.addColorStop(0,'#f3e8cd'); g.addColorStop(0.5,'#efe2c4'); g.addColorStop(1,'#e9dab8');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-  // aged blotches
   for(let i=0;i<5;i++){
     const bx=(i*173)%W, by=60+(i*211)%(H-100);
     const bg=ctx.createRadialGradient(bx,by,4,bx,by,70);
-    bg.addColorStop(0,'rgba(160,130,80,.05)'); bg.addColorStop(1,'rgba(160,130,80,0)');
+    bg.addColorStop(0,'rgba(160,130,80,.09)'); bg.addColorStop(1,'rgba(160,130,80,0)');
     ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(bx,by,70,0,7); ctx.fill();
   }
-  // compass rose, top right
-  ctx.save(); ctx.translate(W-62,66); ctx.strokeStyle='rgba(92,74,45,.5)'; ctx.fillStyle='rgba(92,74,45,.5)';
-  ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(0,0,24,0,7); ctx.stroke();
-  ctx.beginPath(); ctx.arc(0,0,18,0,7); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(5,0); ctx.lineTo(0,24); ctx.lineTo(-5,0); ctx.closePath(); ctx.fill();
-  ctx.font='700 11px Georgia,serif'; ctx.textAlign='center'; ctx.fillText('N',0,-30);
-  ctx.restore(); ctx.textAlign='start';
-  // title cartouche, bottom left
-  ctx.font='italic 15px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.65)';
-  ctx.fillText('Chart of the Reef Grounds — soundings unknown', PAD, H-16);
+  for(const [x0,y0,x1,y1] of [[0,0,0,44],[0,H,0,H-44],[0,0,44,0],[W,0,W-44,0]]){
+    const vg = ctx.createLinearGradient(x0,y0,x1,y1);
+    vg.addColorStop(0,'rgba(120,90,50,.10)'); vg.addColorStop(1,'rgba(120,90,50,0)');
+    ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+  }
+  // the neatline: a chart's double-ruled border with tick marks
+  ctx.strokeStyle='rgba(92,74,45,.5)'; ctx.lineWidth=2; ctx.strokeRect(14,14,W-28,H-28);
+  ctx.lineWidth=1; ctx.strokeRect(20,20,W-40,H-40);
+  ctx.lineWidth=1;
+  for(let x=20+48; x<W-20; x+=48){ ctx.beginPath(); ctx.moveTo(x,14); ctx.lineTo(x,20); ctx.moveTo(x,H-14); ctx.lineTo(x,H-20); ctx.stroke(); }
+  for(let y=20+48; y<H-20; y+=48){ ctx.beginPath(); ctx.moveTo(14,y); ctx.lineTo(20,y); ctx.moveTo(W-14,y); ctx.lineTo(W-20,y); ctx.stroke(); }
 
+  // an 8-point compass rose, seated bottom-right inside the neatline
+  ctx.save(); ctx.translate(W-64,H-64);
+  for(let p=0;p<8;p++){
+    const a = p*Math.PI/4, r = p%2===0 ? 30 : 19;
+    ctx.fillStyle = p%2===0 ? 'rgba(92,74,45,.6)' : 'rgba(92,74,45,.3)';
+    ctx.beginPath();
+    ctx.moveTo(Math.sin(a)*r, -Math.cos(a)*r);
+    ctx.lineTo(Math.sin(a+0.35)*6, -Math.cos(a+0.35)*6);
+    ctx.lineTo(Math.sin(a-0.35)*6, -Math.cos(a-0.35)*6);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.strokeStyle='rgba(92,74,45,.55)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(0,0,12,0,7); ctx.stroke();
+  ctx.font='700 11px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.7)'; ctx.textAlign='center';
+  ctx.fillText('N',0,-34);
+  ctx.restore(); ctx.textAlign='start';
+  // cartouche, centered
+  ctx.font='italic 15px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.65)'; ctx.textAlign='center';
+  ctx.fillText('Chart of the Reef Grounds — soundings unknown', W/2, H-28);
   // grid labels
-  ctx.font='600 12px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.75)'; ctx.textAlign='center';
-  for(let c2=0;c2<COLS;c2++) ctx.fillText('ABCDE'[c2], PAD+c2*TILE+TILE/2, TOP-12);
-  for(let r=0;r<COLS;r++) ctx.fillText(String(r+1), PAD-16, TOP+r*TILE+TILE/2+4);
+  ctx.font='600 12px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.75)';
+  for(let c2=0;c2<COLS;c2++) ctx.fillText('ABCDE'[c2], PAD+c2*TILE+TILE/2, TOP-10);
+  for(let r=0;r<COLS;r++) ctx.fillText(String(r+1), PAD-18, TOP+r*TILE+TILE/2+4);
   ctx.textAlign='start';
 
-  // tiles
+  // the graticule: ruled cells, square corners — a chart, not chips
+  ctx.strokeStyle='rgba(92,74,45,.3)'; ctx.lineWidth=1;
+  for(let c2=0;c2<=COLS;c2++){ ctx.beginPath(); ctx.moveTo(PAD+c2*TILE,TOP); ctx.lineTo(PAD+c2*TILE,TOP+COLS*TILE); ctx.stroke(); }
+  for(let r=0;r<=COLS;r++){ ctx.beginPath(); ctx.moveTo(PAD,TOP+r*TILE); ctx.lineTo(PAD+COLS*TILE,TOP+r*TILE); ctx.stroke(); }
+
   for(let i=0;i<GRID;i++){
     const [x,y] = tileXY(i);
     const st = revealed[i];
     const picked = picks.includes(i);
-    // base water tile
-    ctx.fillStyle = st==='reef' ? '#d8c9a8' : '#dceef2';
-    if(st==='clear') ctx.fillStyle='#cfe9ee';
-    roundRect(x+4,y+4,TILE-8,TILE-8,10);
-    ctx.fill();
-    ctx.strokeStyle='rgba(92,74,45,.35)'; ctx.lineWidth=1.2;
-    roundRect(x+4,y+4,TILE-8,TILE-8,10); ctx.stroke();
-    // gentle water lines on unrevealed tiles
-    if(!st){
-      ctx.strokeStyle='rgba(30,111,142,.18)'; ctx.lineWidth=1.2;
-      for(let w=0;w<2;w++){
-        const wy=y+34+w*24 + Math.sin(t*0.0016+i+w)*1.5;
-        ctx.beginPath();
-        for(let wx=x+14;wx<=x+TILE-14;wx+=8){
-          const yy=wy+Math.sin(wx*0.12+t*0.002+i)*1.6;
-          wx===x+14?ctx.moveTo(wx,yy):ctx.lineTo(wx,yy);
-        }
-        ctx.stroke();
-      }
-    }
-    // stamp pop scale
-    const age = stampAt[i]!=null ? Math.min(1,(now-stampAt[i])/260) : 1;
-    const pop = st ? (1 + 0.35*(1-easeOut(age))) : 1;
     if(st==='clear'){
-      // open water: a calm sounding mark
+      // proven open water: the only blue on the chart — a watercolor wash
+      ctx.fillStyle='#cfe4ea'; ctx.fillRect(x+1,y+1,TILE-2,TILE-2);
+      const wg = ctx.createRadialGradient(x+TILE/2,y+TILE/2,10,x+TILE/2,y+TILE/2,TILE*0.7);
+      wg.addColorStop(0,'rgba(30,111,142,0)'); wg.addColorStop(1,'rgba(30,111,142,.14)');
+      ctx.fillStyle=wg; ctx.fillRect(x+1,y+1,TILE-2,TILE-2);
+    } else if(st==='reef'){
+      // foul ground: darkened, 45° hatched — the cartographic danger mark
+      ctx.fillStyle='#cdbb92'; ctx.fillRect(x+1,y+1,TILE-2,TILE-2);
+      ctx.save(); ctx.beginPath(); ctx.rect(x+1,y+1,TILE-2,TILE-2); ctx.clip();
+      ctx.strokeStyle='rgba(61,50,38,.18)'; ctx.lineWidth=1;
+      for(let h=-TILE; h<TILE; h+=6){ ctx.beginPath(); ctx.moveTo(x+h,y+TILE); ctx.lineTo(x+h+TILE,y); ctx.stroke(); }
+      ctx.restore();
+    } else {
+      // unknown water: parchment with faux soundings
+      ctx.font='italic 10px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.28)';
+      for(const s of SOUNDINGS[i]) ctx.fillText(String(s.n), x+s.dx, y+s.dy);
+    }
+    // hover: a ghost pencil X invites the click
+    if(hoverTile===i && !st && !picked && !running && !pending && picks.length<MAX_PICKS){
+      ctx.fillStyle='rgba(30,111,142,.07)'; ctx.fillRect(x+1,y+1,TILE-2,TILE-2);
+      ctx.strokeStyle='rgba(60,55,48,.3)'; ctx.lineWidth=2.5; ctx.lineCap='round';
+      const cx2=x+TILE/2, cy2=y+TILE/2;
+      ctx.beginPath(); ctx.moveTo(cx2-10,cy2-10); ctx.lineTo(cx2+10,cy2+10);
+      ctx.moveTo(cx2+10,cy2-10); ctx.lineTo(cx2-10,cy2+10); ctx.stroke();
+    }
+    // telegraph: the sounding lead hangs over the next tile
+    if(telegraph && telegraph.tile===i){
+      const tu = ((now-telegraph.t0)/700)%1;
+      ctx.strokeStyle=`rgba(30,111,142,${0.55-0.35*tu})`; ctx.lineWidth=2.5;
+      ctx.strokeRect(x+4+tu*6, y+4+tu*6, TILE-8-tu*12, TILE-8-tu*12);
+    }
+    const age = stampAt[i]!=null ? Math.min(1,(now-stampAt[i])/260) : 1;
+    const pop = (st || stampAt[i]!=null) ? (1 + 0.35*(1-easeOut(age))) : 1;
+    if(st==='clear'){
       ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(pop,pop);
-      ctx.strokeStyle='#1e6f8e'; ctx.lineWidth=3; ctx.lineCap='round';
+      ctx.strokeStyle=INKBLUE; ctx.lineWidth=3; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(-16,2); ctx.quadraticCurveTo(-8,-8,0,2); ctx.quadraticCurveTo(8,12,16,2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-10,12); ctx.quadraticCurveTo(0,4,10,12); ctx.stroke();
       ctx.restore();
     } else if(st==='reef'){
-      // the reef: dark jags and a warning ring
-      ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(pop,pop);
+      // the wreck slams in oversized
+      const slam = 1 + 0.8*(1-easeOut(age));
+      ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(slam,slam);
       ctx.fillStyle='#3d3226';
       ctx.beginPath(); ctx.moveTo(-20,14); ctx.lineTo(-10,-12); ctx.lineTo(-2,4);
       ctx.lineTo(6,-16); ctx.lineTo(14,8); ctx.lineTo(20,14); ctx.closePath(); ctx.fill();
@@ -423,7 +509,8 @@ function drawChart(now){
       ctx.beginPath(); ctx.arc(0,0,26,0,7); ctx.stroke();
       ctx.restore();
     }
-    // faint ghost reef (post-loss chart disclosure)
+    // ghost reefs: post-run disclosure, win or lose — even on stamped-clear
+    // tiles a ghost never draws (a reef tile is stamped 'reef', honestly)
     if(ghostReefs && ghostReefs.includes(i) && !st){
       ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.globalAlpha=0.28;
       ctx.fillStyle='#3d3226';
@@ -431,43 +518,60 @@ function drawChart(now){
       ctx.lineTo(6,-10); ctx.lineTo(12,10); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
-    // course marker
+    // the plan: graphite X, ink-blue hand numeral — never the danger red.
+    // A fresh pick pops in with the same 260ms overshoot as a stamp.
     if(picked && st!=='reef'){
-      const n = picks.indexOf(i)+1;
-      ctx.save(); ctx.translate(x+TILE-22,y+22);
-      ctx.fillStyle='#b0483f';
-      ctx.beginPath(); ctx.arc(0,0,11,0,7); ctx.fill();
-      ctx.fillStyle='#fff'; ctx.font='700 11px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(String(n),0,0.5);
-      ctx.restore(); ctx.textAlign='start'; ctx.textBaseline='alphabetic';
       if(!st){
-        ctx.strokeStyle='rgba(176,72,63,.8)'; ctx.lineWidth=2.5; ctx.lineCap='round';
-        const cx2=x+TILE/2, cy2=y+TILE/2;
-        ctx.beginPath(); ctx.moveTo(cx2-10,cy2-10); ctx.lineTo(cx2+10,cy2+10);
-        ctx.moveTo(cx2+10,cy2-10); ctx.lineTo(cx2-10,cy2+10); ctx.stroke();
+        ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(pop,pop);
+        ctx.strokeStyle=GRAPHITE; ctx.lineWidth=2.5; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(-10,-10); ctx.lineTo(10,10);
+        ctx.moveTo(10,-10); ctx.lineTo(-10,10); ctx.stroke();
+        ctx.restore();
       }
+      ctx.save(); ctx.translate(x+TILE-18,y+20); ctx.rotate(-0.06);
+      ctx.fillStyle=INKBLUE; ctx.font='700 14px Georgia,serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(picks.indexOf(i)+1),0,0);
+      ctx.restore(); ctx.textAlign='start'; ctx.textBaseline='alphabetic';
     }
   }
-  // the course line: dashed pencil route through picks in order
-  if(picks.length>1){
-    ctx.strokeStyle='rgba(176,72,63,.55)'; ctx.lineWidth=2; ctx.setLineDash([6,6]);
-    ctx.beginPath();
-    picks.forEach((p,idx)=>{
-      const [x,y]=tileXY(p);
-      idx===0?ctx.moveTo(x+TILE/2,y+TILE/2):ctx.lineTo(x+TILE/2,y+TILE/2);
-    });
-    ctx.stroke(); ctx.setLineDash([]);
+  // the previous run's route stays on the chart until a new plan begins
+  if(lastRun && !picks.length && !running){
+    drawRoute(lastRun.picks, 'rgba(60,55,48,.35)');
+    ctx.font='italic 12px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.5)'; ctx.textAlign='center';
+    ctx.fillText(lastRun.won ? 'the passage, as sailed' : 'the passage, as far as it went', W/2, TOP-26);
+    ctx.textAlign='start';
   }
-  drawConfetti();
+  if(picks.length>1) drawRoute(picks, 'rgba(60,55,48,.6)');
+  drawConfetti(dt);
+  // wreck vignette: a 260ms red flash
+  if(flashT){
+    const fu = (now-flashT)/260;
+    if(fu<1){ ctx.fillStyle=`rgba(176,72,63,${0.22*(1-fu)})`; ctx.fillRect(0,0,W,H); }
+    else flashT = 0;
+  }
   ctx.restore();
+  // the purse ticks rather than teleporting
+  if(Math.abs(shownPurse-purse)>0.5){
+    shownPurse += (purse-shownPurse)*Math.min(1, dt/180);
+    $('purse').textContent = fmt(Math.round(shownPurse));
+  }
   requestAnimationFrame(drawChart);
 }
-function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function drawRoute(route, style){
+  if(route.length<2) return;
+  ctx.strokeStyle=style; ctx.lineWidth=2; ctx.setLineDash([6,6]);
+  ctx.beginPath();
+  route.forEach((p,idx)=>{
+    const [x,y]=tileXY(p);
+    idx===0?ctx.moveTo(x+TILE/2,y+TILE/2):ctx.lineTo(x+TILE/2,y+TILE/2);
+  });
+  ctx.stroke(); ctx.setLineDash([]);
+}
 const easeOut = (u)=>1-((1-u)**3);
-function drawConfetti(){
+function drawConfetti(dt){
   confetti = confetti.filter((p)=>p.y<H+10);
   for(const p of confetti){
-    p.x+=p.vx*16; p.y+=p.vy*16; p.vy+=0.007; p.r+=p.vr*16;
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=0.00045*dt; p.r+=p.vr*dt;
     ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r);
     ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s*0.35,p.s,p.s*0.7); ctx.restore();
   }
@@ -502,33 +606,53 @@ async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
   });
   log = log.slice(0,60); save(LS.log, log);
 
-  // The theatre: stamp the course tile by tile in the seed's order. A hit
-  // stops the run where a real reef would.
-  revealed = {}; stampAt = {}; ghostReefs = null;
-  const order = revealOrder(seedHex, picksIn);
+  // The theatre: sail the course in PICK order — the numbered route is the
+  // boat's journey, and the reveal follows it. The cadence escalates: quick
+  // early soundings, a longer and longer held breath as the course survives,
+  // and the final tile gets a telegraphed beat all of its own.
+  revealed = {}; stampAt = {}; ghostReefs = null; telegraph = null;
+  const order = [...picksIn];
   const reefSet = new Set(out.reefTiles);
-  await sleep(400);
-  let sunk = false;
-  for(const tile of order){
-    if(document.visibilityState==='visible') await sleep(650); // pacing only when watched
+  const watched = () => document.visibilityState === 'visible';
+  commitThud();
+  await sleep(500);
+  let sunk = false, wreckTile = null;
+  for(let i=0;i<order.length;i++){
+    const tile = order[i];
+    const last = i === order.length-1;
+    if(watched()){
+      const u = order.length>1 ? i/(order.length-1) : 1;
+      telegraph = { tile, t0: performance.now() };
+      if(last && order.length>1){ sonar(); await sleep(1000); }
+      else await sleep(420 + 480*Math.pow(u,1.6));
+    }
+    telegraph = null;
     const hit = reefSet.has(tile);
     revealed[tile] = hit ? 'reef' : 'clear';
     stampAt[tile] = performance.now();
-    if(hit){ crunch(); shake = Math.max(shake, 6); sunk = true; break; }
-    stampThud();
+    if(hit){
+      if(watched()){ crunch(); redFlash(); }
+      shake = Math.max(shake, 13); sunk = true; wreckTile = tile; break;
+    }
+    if(watched()) stampThud(1 + i*0.13); // the pitch climbs with the held breath
   }
-  // stamp any un-revealed course tiles instantly if we sank mid-route
-  if(sunk) for(const tile of order){ if(revealed[tile]==null){ revealed[tile]='clear'; } }
+  // if we sank mid-route, disclose the REST of the course honestly — a tile
+  // can be both un-sailed and a reef, and the chart must never lie about it
+  if(sunk) for(const tile of order){
+    if(revealed[tile]==null) revealed[tile] = reefSet.has(tile) ? 'reef' : 'clear';
+  }
   await sleep(500);
   fanfare(out.won);
   if(out.won) celebrate();
-  else ghostReefs = out.reefTiles; // show where the reefs lay — the chart owes you that
+  ghostReefs = out.reefTiles; // the chart owes you the reefs, win or lose
+  lastRun = { picks: [...picksIn], won: out.won };
   showBanner(
-    out.won ? 'Clean passage!' : `Wrecked on ${tileName(out.hits[0])}`,
+    out.won ? 'Clean passage!' : `Wrecked on ${tileName(wreckTile)}`,
     out.won ? `Every sounding came up clear — <b class="win">${fmtDelta(out.delta)}</b> doubloons`
             : `The reef took your stake: <b class="lose">${fmtDelta(out.delta)}</b> doubloons`,
     out.won,
   );
+  if(out.won) tweenPurse();
   await sleep(600);
   running = false;
   picks = [];
@@ -612,12 +736,17 @@ function stakeVal(){
   return Number.isFinite(v)&&v>0 ? v : 0;
 }
 function renderHeader(){
-  $('purse').textContent = fmt(purse);
+  // the purse text is owned by drawChart's tween — never snap it here
   $('sound-ic').innerHTML = `<use href="#i-${soundOn?'sound':'mute'}"/>`;
 }
 function renderReefSeg(){
-  $('reefs').querySelectorAll('button').forEach((b)=>
-    b.classList.toggle('on', Number(b.dataset.r)===reefCount));
+  $('reefs').querySelectorAll('button').forEach((b)=>{
+    const on = Number(b.dataset.r)===reefCount;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  $('mode').querySelectorAll('button').forEach((b)=>
+    b.setAttribute('aria-pressed', String(b.classList.contains('on'))));
 }
 function renderSlip(){
   const st = stakeVal(), k = picks.length;
@@ -649,6 +778,7 @@ function renderSlip(){
   $('mode-hint').textContent = mode==='tide'
     ? 'Your course and mark are fixed now; the next testnet4 block places the reefs. Verifiable by anyone, forever.'
     : 'Tap the chart to plot your course — up to 10 tiles. Practice runs are seeded locally and sail at once.';
+  syncOverlay();
 }
 function ago(ts){
   const s = Math.max(0,(Date.now()-ts)/1000);
@@ -670,7 +800,7 @@ function renderLog(){
       : `<span class="tag">practice</span>`;
     tr.innerHTML = `
       <td>#${r.n} ${r.mode==='tide'?'<span class="tag tide">tide</span>':''}<br><span class="when" title="${new Date(r.at).toLocaleString()}">${ago(r.at)}</span></td>
-      <td>${r.picks.map(tileName).join(' → ')} <span class="tag">${r.reefs} reefs</span></td>
+      <td><span class="course-str">${r.picks.map(tileName).join(' → ')}</span> <span class="tag">${r.reefs}&nbsp;reefs</span></td>
       <td class="num">${fmt(r.stake)}</td>
       <td>${r.won ? 'clean passage' : 'wrecked on ' + tileName(r.hits[0])}</td>
       <td class="num ${r.delta>=0?'delta-win':'delta-lose'}">${fmtDelta(r.delta)}</td>
@@ -698,21 +828,46 @@ function renderLog(){
 function renderAll(){ renderHeader(); renderReefSeg(); renderSlip(); renderLog(); }
 
 /* ---------------- events ---------------- */
-cv.addEventListener('click', (e)=>{
-  if(running || pending) return;
+function tileFromEvent(e){
   const rect = cv.getBoundingClientRect();
   const x = (e.clientX-rect.left) * (W/rect.width);
   const y = (e.clientY-rect.top) * (H/rect.height);
   const col = Math.floor((x-PAD)/TILE), row = Math.floor((y-TOP)/TILE);
-  if(col<0||col>=COLS||row<0||row>=COLS) return;
-  const tile = row*COLS+col;
+  if(col<0||col>=COLS||row<0||row>=COLS) return null;
+  return row*COLS+col;
+}
+function toggleTile(tile){
+  if(running || pending) return;
   const at = picks.indexOf(tile);
   if(at>=0){ picks.splice(at,1); blip(880); }
-  else if(picks.length<MAX_PICKS){ picks.push(tile); blip(); }
-  else { blip(300,0.05); return; }
-  revealed = {}; ghostReefs = null;
-  renderSlip();
-});
+  else if(picks.length<MAX_PICKS){ picks.push(tile); stampAt[tile]=performance.now(); blip(); }
+  else { blip(300,0.05); shake = Math.max(shake, 3); return; }
+  // a new plan clears the last run's story from the chart
+  revealed = {}; ghostReefs = null; lastRun = null;
+  renderSlip(); syncOverlay();
+}
+// The DOM overlay grid carries all input: clicks, hover, keyboard and screen
+// readers alike. The canvas underneath only ever paints.
+const tileGrid = $('tile-grid');
+for(let i=0;i<GRID;i++){
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.setAttribute('aria-label', 'tile ' + tileName(i));
+  b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('click', ()=>toggleTile(i));
+  b.addEventListener('pointerenter', ()=>{ hoverTile = i; });
+  tileGrid.appendChild(b);
+}
+tileGrid.addEventListener('pointerleave', ()=>{ hoverTile = null; });
+function syncOverlay(){
+  const locked = running || !!pending;
+  [...tileGrid.children].forEach((b,i)=>{
+    b.setAttribute('aria-pressed', String(picks.includes(i)));
+    b.disabled = locked;
+  });
+  $('chart-frame').classList.toggle('locked', locked);
+  document.querySelector('.slip').classList.toggle('locked', locked);
+}
 $('reefs').addEventListener('click',(e)=>{
   const b=e.target.closest('button'); if(!b || pending) return;
   reefCount = Number(b.dataset.r); blip(); renderReefSeg(); renderSlip();
@@ -742,7 +897,8 @@ $('sound-btn').addEventListener('click',()=>{ soundOn=!soundOn; save(LS.sound,so
 /* ---------------- boot ---------------- */
 if(purse<=0 && !pending){ purse = 1000; save(LS.purse, purse); }
 if(pending){ picks = [...pending.picks]; reefCount = pending.reefs; }
-renderAll();
+shownPurse = purse; $('purse').textContent = fmt(purse);
+renderAll(); syncOverlay();
 fetchTip().catch(()=>{ $('tide-height').textContent='offline'; });
 if(pending) watchTide();
 </script>
