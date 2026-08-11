@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>og poster renderer</title>
+<style>body{margin:0;background:#333}canvas{display:block}</style></head>
+<body>
+<canvas id="og" width="1200" height="630"></canvas>
+<script>
+// Renders the 1200×630 Open Graph poster for Reef Run using the game's own
+// chart vocabulary — no assets, every pixel from code.
+const cv = document.getElementById('og'), ctx = cv.getContext('2d');
+const W = 1200, H = 630;
+
+// parchment
+let g = ctx.createLinearGradient(0,0,W,H);
+g.addColorStop(0,'#f3e8cd'); g.addColorStop(0.5,'#efe2c4'); g.addColorStop(1,'#e9dab8');
+ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+[[300,150],[800,420],[1000,180],[500,500]].forEach(([bx,by])=>{
+  const bg=ctx.createRadialGradient(bx,by,6,bx,by,120);
+  bg.addColorStop(0,'rgba(160,130,80,.09)'); bg.addColorStop(1,'rgba(160,130,80,0)');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(bx,by,120,0,7); ctx.fill();
+});
+// edge vignette
+for(const [x0,y0,x1,y1] of [[0,0,0,70],[0,H,0,H-70],[0,0,70,0],[W,0,W-70,0]]){
+  const vg = ctx.createLinearGradient(x0,y0,x1,y1);
+  vg.addColorStop(0,'rgba(120,90,50,.12)'); vg.addColorStop(1,'rgba(120,90,50,0)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+}
+// neatline
+ctx.strokeStyle='rgba(92,74,45,.55)'; ctx.lineWidth=4; ctx.strokeRect(26,26,W-52,H-52);
+ctx.lineWidth=1.5; ctx.strokeRect(38,38,W-76,H-76);
+ctx.lineWidth=1.5;
+for(let x=38+80;x<W-38;x+=80){ ctx.beginPath(); ctx.moveTo(x,26); ctx.lineTo(x,38); ctx.moveTo(x,H-26); ctx.lineTo(x,H-38); ctx.stroke(); }
+for(let y=38+80;y<H-38;y+=80){ ctx.beginPath(); ctx.moveTo(26,y); ctx.lineTo(38,y); ctx.moveTo(W-26,y); ctx.lineTo(W-38,y); ctx.stroke(); }
+
+// the chart grid: 5×4 visible section, right of the title panel
+const GX=560, GY=90, TILE=130;
+ctx.strokeStyle='rgba(92,74,45,.32)'; ctx.lineWidth=1.5;
+for(let c=0;c<=4;c++){ ctx.beginPath(); ctx.moveTo(GX+c*TILE,GY); ctx.lineTo(GX+c*TILE,GY+3*TILE); ctx.stroke(); }
+for(let r=0;r<=3;r++){ ctx.beginPath(); ctx.moveTo(GX,GY+r*TILE); ctx.lineTo(GX+4*TILE,GY+r*TILE); ctx.stroke(); }
+// faux soundings
+ctx.font='italic 17px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.32)';
+[[GX+30,GY+40,'7'],[GX+170,GY+105,'12'],[GX+300,GY+55,'4'],[GX+430,GY+150,'9'],
+ [GX+60,GY+300,'6'],[GX+330,GY+330,'11'],[GX+480,GY+290,'5']].forEach(([x,y,n])=>ctx.fillText(n,x,y));
+// two proven-water washes along the course
+function wash(cx,cy){
+  ctx.fillStyle='#cfe4ea'; ctx.fillRect(cx+2,cy+2,TILE-4,TILE-4);
+  const wg = ctx.createRadialGradient(cx+TILE/2,cy+TILE/2,14,cx+TILE/2,cy+TILE/2,TILE*0.7);
+  wg.addColorStop(0,'rgba(30,111,142,0)'); wg.addColorStop(1,'rgba(30,111,142,.15)');
+  ctx.fillStyle=wg; ctx.fillRect(cx+2,cy+2,TILE-4,TILE-4);
+  // sounding mark
+  ctx.strokeStyle='#1e6f8e'; ctx.lineWidth=4.5; ctx.lineCap='round';
+  const mx=cx+TILE/2,my=cy+TILE/2;
+  ctx.beginPath(); ctx.moveTo(mx-24,my+3); ctx.quadraticCurveTo(mx-12,my-12,mx,my+3); ctx.quadraticCurveTo(mx+12,my+18,mx+24,my+3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(mx-15,my+18); ctx.quadraticCurveTo(mx,my+6,mx+15,my+18); ctx.stroke();
+}
+wash(GX, GY);            // tile (0,0)
+wash(GX+2*TILE, GY+TILE); // tile (2,1)
+// a graphite X still to sail
+function planX(cx,cy){
+  ctx.strokeStyle='rgba(60,55,48,.78)'; ctx.lineWidth=4; ctx.lineCap='round';
+  const mx=cx+TILE/2,my=cy+TILE/2;
+  ctx.beginPath(); ctx.moveTo(mx-16,my-16); ctx.lineTo(mx+16,my+16);
+  ctx.moveTo(mx+16,my-16); ctx.lineTo(mx-16,my+16); ctx.stroke();
+}
+planX(GX+3*TILE, GY+2*TILE);
+// the reef: foul ground, hatched, wreck + red ring
+(function(){
+  const cx=GX+TILE, cy=GY+2*TILE;
+  ctx.fillStyle='#cdbb92'; ctx.fillRect(cx+2,cy+2,TILE-4,TILE-4);
+  ctx.save(); ctx.beginPath(); ctx.rect(cx+2,cy+2,TILE-4,TILE-4); ctx.clip();
+  ctx.strokeStyle='rgba(61,50,38,.2)'; ctx.lineWidth=1.5;
+  for(let h=-TILE;h<TILE;h+=9){ ctx.beginPath(); ctx.moveTo(cx+h,cy+TILE); ctx.lineTo(cx+h+TILE,cy); ctx.stroke(); }
+  ctx.restore();
+  const mx=cx+TILE/2,my=cy+TILE/2;
+  ctx.fillStyle='#3d3226';
+  ctx.beginPath(); ctx.moveTo(mx-30,my+20); ctx.lineTo(mx-15,my-18); ctx.lineTo(mx-3,my+6);
+  ctx.lineTo(mx+9,my-24); ctx.lineTo(mx+21,my+12); ctx.lineTo(mx+30,my+20); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#b0483f'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.arc(mx,my,40,0,7); ctx.stroke();
+})();
+// the dashed course through them
+ctx.strokeStyle='rgba(60,55,48,.6)'; ctx.lineWidth=3.5; ctx.setLineDash([12,12]);
+ctx.beginPath();
+ctx.moveTo(GX+TILE/2, GY+TILE/2);
+ctx.lineTo(GX+2*TILE+TILE/2, GY+TILE+TILE/2);
+ctx.lineTo(GX+3*TILE+TILE/2, GY+2*TILE+TILE/2);
+ctx.stroke(); ctx.setLineDash([]);
+
+// compass rose bottom-right
+ctx.save(); ctx.translate(W-110,H-110);
+for(let p=0;p<8;p++){
+  const a=p*Math.PI/4, r=p%2===0?46:29;
+  ctx.fillStyle=p%2===0?'rgba(92,74,45,.6)':'rgba(92,74,45,.3)';
+  ctx.beginPath();
+  ctx.moveTo(Math.sin(a)*r,-Math.cos(a)*r);
+  ctx.lineTo(Math.sin(a+0.35)*9,-Math.cos(a+0.35)*9);
+  ctx.lineTo(Math.sin(a-0.35)*9,-Math.cos(a-0.35)*9);
+  ctx.closePath(); ctx.fill();
+}
+ctx.strokeStyle='rgba(92,74,45,.55)'; ctx.lineWidth=1.5;
+ctx.beginPath(); ctx.arc(0,0,18,0,7); ctx.stroke();
+ctx.font='700 16px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.7)'; ctx.textAlign='center';
+ctx.fillText('N',0,-52); ctx.restore(); ctx.textAlign='start';
+
+// title panel, left
+const px=64, py=170, pw=430, ph=210;
+ctx.fillStyle='rgba(247,241,227,.96)';
+ctx.strokeStyle='#d9cdb4'; ctx.lineWidth=2;
+ctx.beginPath(); ctx.roundRect(px,py,pw,ph,18); ctx.fill(); ctx.stroke();
+ctx.fillStyle='#1e6f8e'; ctx.fillRect(px,py,pw,6);
+// coral glyph
+ctx.save(); ctx.translate(px+56,py+72); ctx.scale(3,3); ctx.fillStyle='#c94f4f';
+ctx.beginPath();
+ctx.moveTo(0,14); ctx.lineTo(0,3);
+ctx.fill();
+ctx.fillRect(-1.2,2,2.4,12);
+ctx.beginPath(); ctx.moveTo(-1,4); ctx.quadraticCurveTo(-7,2,-8,-5); ctx.quadraticCurveTo(-3,-4,-1,0); ctx.closePath(); ctx.fill();
+ctx.beginPath(); ctx.moveTo(1,4); ctx.quadraticCurveTo(7,2,8,-5); ctx.quadraticCurveTo(3,-4,1,0); ctx.closePath(); ctx.fill();
+ctx.beginPath(); ctx.moveTo(0,1); ctx.quadraticCurveTo(-1,-6,-4,-9); ctx.quadraticCurveTo(1,-9,1.5,-2); ctx.closePath(); ctx.fill();
+ctx.restore();
+ctx.fillStyle='#232e38';
+ctx.font='700 56px "Iowan Old Style",Palatino,Georgia,serif';
+ctx.fillText('REEF RUN', px+100, py+88);
+ctx.fillStyle='#5c6a76';
+ctx.font='italic 26px Georgia,serif';
+ctx.fillText('chart your course before the tide', px+30, py+136);
+ctx.font='600 18px system-ui,sans-serif';
+ctx.fillStyle='#1e6f8e';
+ctx.fillText('provably fair · the next Bitcoin block places the reefs', px+30, py+172);
+</script>
+</body>
+</html>
