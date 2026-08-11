@@ -15,7 +15,7 @@
   :root{
     --paper:#f7f1e3; --paper-2:#efe6d2; --ink:#232e38; --ink-soft:#5c6a76;
     --line:#d9cdb4; --accent:#1e6f8e; --gold:#b8860b;
-    --win:#1e7d4f; --lose:#b0483f; --course:#b0483f;
+    --win:#1e7d4f; --lose:#b0483f;
     --serif:"Iowan Old Style",Palatino,Georgia,serif;
   }
   *{box-sizing:border-box}
@@ -275,8 +275,7 @@
 </div>
 
 <script type="module">
-import { GRID, REEF_OPTIONS, MAX_PICKS, chance, quote, reefsFromSeed, revealOrder, settle }
-  from './reef.js';
+import { GRID, MAX_PICKS, quote, settle } from './reef.js';
 
 /* ================================================================ state */
 const LS = { purse:'reef-purse', log:'reef-log', pending:'reef-pending', sound:'reef-sound', runs:'reef-runs' };
@@ -378,11 +377,11 @@ let ghostReefs = null; // post-run: the full reef chart, disclosed win or lose
 let telegraph = null;  // {tile, t0}: the sounding lead is over this tile now
 let hoverTile = null;  // pointer hover: ghost pencil X
 let lastRun = null;    // {picks, won}: the previous route stays on the chart
+let fatalTile = null;  // the reef that actually sank the run (red ring)
 let flashT = 0;        // red vignette on a wreck
 const redFlash = () => { flashT = performance.now(); };
-// the purse rolls, never teleports
+// the purse rolls, never teleports: drawChart eases shownPurse toward purse
 let shownPurse = purse;
-function tweenPurse(){ /* drawChart eases shownPurse toward purse each frame */ }
 // faux soundings: stable per-tile depth numerals, pure decoration
 const SOUNDINGS = Array.from({length: GRID}, (_, i) => {
   const a = (i*2654435761 >>> 0);
@@ -499,14 +498,19 @@ function drawChart(now){
       ctx.beginPath(); ctx.moveTo(-10,12); ctx.quadraticCurveTo(0,4,10,12); ctx.stroke();
       ctx.restore();
     } else if(st==='reef'){
-      // the wreck slams in oversized
-      const slam = 1 + 0.8*(1-easeOut(age));
+      // the wreck slams in oversized; only the FATAL reef wears the red ring —
+      // other course reefs disclosed by the backfill draw at ghost weight
+      const fatal = i === fatalTile;
+      const slam = 1 + (fatal ? 0.8 : 0.35)*(1-easeOut(age));
       ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(slam,slam);
+      if(!fatal) ctx.globalAlpha = 0.55;
       ctx.fillStyle='#3d3226';
       ctx.beginPath(); ctx.moveTo(-20,14); ctx.lineTo(-10,-12); ctx.lineTo(-2,4);
       ctx.lineTo(6,-16); ctx.lineTo(14,8); ctx.lineTo(20,14); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle='#b0483f'; ctx.lineWidth=3;
-      ctx.beginPath(); ctx.arc(0,0,26,0,7); ctx.stroke();
+      if(fatal){
+        ctx.strokeStyle='#b0483f'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(0,0,26,0,7); ctx.stroke();
+      }
       ctx.restore();
     }
     // ghost reefs: post-run disclosure, win or lose — even on stamped-clear
@@ -538,7 +542,7 @@ function drawChart(now){
   if(lastRun && !picks.length && !running){
     drawRoute(lastRun.picks, 'rgba(60,55,48,.35)');
     ctx.font='italic 12px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.5)'; ctx.textAlign='center';
-    ctx.fillText(lastRun.won ? 'the passage, as sailed' : 'the passage, as far as it went', W/2, TOP-26);
+    ctx.fillText(lastRun.won ? 'the passage, as sailed' : 'the passage, as far as it went', W/2, H-46);
     ctx.textAlign='start';
   }
   if(picks.length>1) drawRoute(picks, 'rgba(60,55,48,.6)');
@@ -610,11 +614,11 @@ async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
   // boat's journey, and the reveal follows it. The cadence escalates: quick
   // early soundings, a longer and longer held breath as the course survives,
   // and the final tile gets a telegraphed beat all of its own.
-  revealed = {}; stampAt = {}; ghostReefs = null; telegraph = null;
+  revealed = {}; stampAt = {}; ghostReefs = null; telegraph = null; fatalTile = null;
   const order = [...picksIn];
   const reefSet = new Set(out.reefTiles);
   const watched = () => document.visibilityState === 'visible';
-  commitThud();
+  if(watched()) commitThud();
   await sleep(500);
   let sunk = false, wreckTile = null;
   for(let i=0;i<order.length;i++){
@@ -632,7 +636,7 @@ async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
     stampAt[tile] = performance.now();
     if(hit){
       if(watched()){ crunch(); redFlash(); }
-      shake = Math.max(shake, 13); sunk = true; wreckTile = tile; break;
+      shake = Math.max(shake, 13); sunk = true; wreckTile = tile; fatalTile = tile; break;
     }
     if(watched()) stampThud(1 + i*0.13); // the pitch climbs with the held breath
   }
@@ -642,7 +646,7 @@ async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
     if(revealed[tile]==null) revealed[tile] = reefSet.has(tile) ? 'reef' : 'clear';
   }
   await sleep(500);
-  fanfare(out.won);
+  if(watched()) fanfare(out.won);
   if(out.won) celebrate();
   ghostReefs = out.reefTiles; // the chart owes you the reefs, win or lose
   lastRun = { picks: [...picksIn], won: out.won };
@@ -652,7 +656,6 @@ async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
             : `The reef took your stake: <b class="lose">${fmtDelta(out.delta)}</b> doubloons`,
     out.won,
   );
-  if(out.won) tweenPurse();
   await sleep(600);
   running = false;
   picks = [];
@@ -828,23 +831,16 @@ function renderLog(){
 function renderAll(){ renderHeader(); renderReefSeg(); renderSlip(); renderLog(); }
 
 /* ---------------- events ---------------- */
-function tileFromEvent(e){
-  const rect = cv.getBoundingClientRect();
-  const x = (e.clientX-rect.left) * (W/rect.width);
-  const y = (e.clientY-rect.top) * (H/rect.height);
-  const col = Math.floor((x-PAD)/TILE), row = Math.floor((y-TOP)/TILE);
-  if(col<0||col>=COLS||row<0||row>=COLS) return null;
-  return row*COLS+col;
-}
 function toggleTile(tile){
   if(running || pending) return;
   const at = picks.indexOf(tile);
   if(at>=0){ picks.splice(at,1); blip(880); }
   else if(picks.length<MAX_PICKS){ picks.push(tile); stampAt[tile]=performance.now(); blip(); }
   else { blip(300,0.05); shake = Math.max(shake, 3); return; }
-  // a new plan clears the last run's story from the chart
-  revealed = {}; ghostReefs = null; lastRun = null;
-  renderSlip(); syncOverlay();
+  // a new plan clears the last run's story from the chart — and its banner
+  revealed = {}; ghostReefs = null; lastRun = null; fatalTile = null;
+  hideBanner();
+  renderSlip();
 }
 // The DOM overlay grid carries all input: clicks, hover, keyboard and screen
 // readers alike. The canvas underneath only ever paints.
@@ -863,7 +859,8 @@ function syncOverlay(){
   const locked = running || !!pending;
   [...tileGrid.children].forEach((b,i)=>{
     b.setAttribute('aria-pressed', String(picks.includes(i)));
-    b.disabled = locked;
+    // aria-disabled, not disabled: the lock must not eject keyboard focus
+    b.setAttribute('aria-disabled', String(locked));
   });
   $('chart-frame').classList.toggle('locked', locked);
   document.querySelector('.slip').classList.toggle('locked', locked);
@@ -875,7 +872,10 @@ $('reefs').addEventListener('click',(e)=>{
 $('mode').addEventListener('click',(e)=>{
   const b=e.target.closest('button'); if(!b) return;
   mode=b.dataset.mode; blip();
-  $('mode').querySelectorAll('button').forEach((x)=>x.classList.toggle('on',x===b));
+  $('mode').querySelectorAll('button').forEach((x)=>{
+    x.classList.toggle('on',x===b);
+    x.setAttribute('aria-pressed', String(x===b));
+  });
   if(mode==='tide') fetchTip().catch(()=>{});
   renderSlip();
 });
