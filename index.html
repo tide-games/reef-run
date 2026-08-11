@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reef Run — chart your course before the tide</title>
+<meta name="description" content="Chart a course through hidden reefs. The next Bitcoin block places them — nobody knows where they lie before the tide comes in. Provably fair, pure static.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tide-games">
+<meta property="og:title" content="Reef Run — chart your course before the tide">
+<meta property="og:description" content="Chart a course through hidden reefs. The next Bitcoin block places them — you shape your own odds, and anyone can verify the outcome. Provably fair, pure static.">
+<meta property="og:url" content="https://tide-games.github.io/reef-run/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E🪸%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper:#f7f1e3; --paper-2:#efe6d2; --ink:#232e38; --ink-soft:#5c6a76;
+    --line:#d9cdb4; --accent:#1e6f8e; --gold:#b8860b;
+    --win:#1e7d4f; --lose:#b0483f; --course:#b0483f;
+    --serif:"Iowan Old Style",Palatino,Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 500px at 50% -180px, #fdf9ee 0%, var(--paper) 55%),
+      var(--paper);
+    color:var(--ink);
+    font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1020px;margin:0 auto;padding:14px 16px 40px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .ic{width:1em;height:1em;vertical-align:-0.125em;fill:currentColor}
+
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 2px 10px}
+  h1{font:700 34px/1 var(--serif);letter-spacing:.06em;margin:0}
+  h1 .ic{width:26px;height:26px;vertical-align:-2px;margin-right:4px;fill:#c94f4f}
+  .tagline{color:var(--ink-soft);font-style:italic;font-family:var(--serif)}
+  .spacer{flex:1}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;
+    background:#fff;border:1px solid var(--line);font-weight:600;white-space:nowrap;
+    font-variant-numeric:tabular-nums;box-shadow:0 1px 2px rgba(35,46,56,.06);
+  }
+  .chip small{font-weight:500;color:var(--ink-soft)}
+  .chip.purse{border-color:#dcbf74;background:#fdf8ea}
+  .chip.purse .ic{fill:var(--gold)}
+  button.chip{cursor:pointer;font:inherit;font-weight:600;color:var(--ink)}
+  button.chip:hover{border-color:var(--accent)}
+
+  .board{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+  @media (max-width:840px){.board{grid-template-columns:1fr}}
+
+  .chart-frame{
+    position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    background:#efe2c8;
+    box-shadow:0 10px 30px -18px rgba(60,45,20,.5), 0 1px 3px rgba(35,46,56,.08);
+  }
+  canvas{display:block;width:100%;height:auto;cursor:pointer}
+  #scrim{
+    position:absolute;inset:0;background:rgba(40,32,16,.32);opacity:0;
+    transition:opacity .3s ease;pointer-events:none;
+  }
+  #scrim.show{opacity:1}
+  #banner{
+    position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;
+    opacity:0;transform:translateY(10px) scale(.94);
+    transition:opacity .18s ease, transform .3s cubic-bezier(.2,1.4,.4,1);
+  }
+  #banner.show{opacity:1;transform:none}
+  #banner .inner{
+    display:inline-block;background:var(--paper);border:1px solid var(--line);
+    border-top:4px solid var(--accent);border-radius:12px;padding:16px 30px;
+    box-shadow:0 18px 44px -14px rgba(50,38,15,.55);
+  }
+  #banner .inner.win{border-top-color:var(--win)}
+  #banner .inner.lose{border-top-color:var(--lose)}
+  #banner .head{font:700 32px/1.15 var(--serif);letter-spacing:.02em}
+  #banner .sub{color:var(--ink-soft);margin-top:6px;font-variant-numeric:tabular-nums;font-size:15px}
+  #banner .sub b{font-size:18px}
+  #banner .sub b.win{color:var(--win)} #banner .sub b.lose{color:var(--lose)}
+
+  .card{
+    background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    box-shadow:0 1px 3px rgba(35,46,56,.07);
+  }
+  .card h2{
+    margin:0;padding:11px 16px;font:700 13px/1 system-ui;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);
+    background:linear-gradient(#fff,#fbf7ec);display:flex;align-items:center;gap:8px;
+  }
+  .card h2 .right{margin-left:auto;letter-spacing:0;text-transform:none;font-weight:500}
+  .slip{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+  .slip label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  .row{display:flex;align-items:center;gap:8px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{
+    flex:1;padding:8px 4px;border:0;background:#fff;color:var(--ink-soft);
+    font:600 13px system-ui;cursor:pointer;transition:background .15s ease,color .15s ease;
+    font-variant-numeric:tabular-nums;
+  }
+  .seg button.on{background:var(--accent);color:#fff}
+  #stake{
+    flex:1;min-width:0;font:600 20px/1 system-ui;color:var(--ink);background:var(--paper);
+    border:1px solid var(--line);border-radius:9px;padding:9px 12px;text-align:right;
+    font-variant-numeric:tabular-nums;appearance:textfield;
+  }
+  #stake::-webkit-inner-spin-button,#stake::-webkit-outer-spin-button{appearance:none;margin:0}
+  .quick{display:flex;gap:6px}
+  .quick button{
+    flex:1;padding:6px 0;border:1px solid var(--line);border-radius:8px;background:#fff;
+    color:var(--ink-soft);font:600 13px system-ui;cursor:pointer;
+  }
+  .quick button:hover{border-color:var(--accent);color:var(--accent)}
+  .quick button[aria-pressed="true"]{background:var(--paper);border-color:var(--accent);color:var(--accent)}
+  .facts{
+    display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:9px;overflow:hidden;
+    font-variant-numeric:tabular-nums;
+  }
+  .facts div{background:var(--paper-2);padding:8px 12px}
+  .facts .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  .facts .v{font:700 17px/1.3 system-ui}
+  .facts .v .ic{width:13px;height:13px;fill:var(--gold)}
+  #go-btn{
+    border:0;border-radius:10px;padding:13px;cursor:pointer;
+    font:700 15px system-ui;letter-spacing:.04em;color:#fff;
+    background:linear-gradient(#2a86a8,var(--accent));
+    box-shadow:0 6px 14px -6px rgba(30,111,142,.55), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  #go-btn:hover{filter:brightness(1.06)}
+  #go-btn:active{transform:translateY(1px)}
+  #go-btn:disabled{background:#c9c2b2;color:#6d6455;box-shadow:none;cursor:default}
+  .hint{font-size:13px;color:var(--ink-soft);line-height:1.5}
+  #tide-note{display:none;background:#f3f8fb;border:1px solid #cfe3ec;border-radius:9px;padding:9px 11px;font-size:13px;color:#23576d}
+  #tide-note b{font-variant-numeric:tabular-nums}
+
+  .log-card{margin-top:16px}
+  table.log{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+  table.log th{
+    text-align:left;padding:8px 12px;color:var(--ink-soft);font:600 11px system-ui;
+    letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--line);
+  }
+  table.log th:first-child{width:110px}
+  table.log th.num,table.log td.num{text-align:right}
+  table.log td{padding:8px 12px;border-bottom:1px solid #f0e9d8}
+  table.log tr:last-child td{border-bottom:0}
+  .when{color:var(--ink-soft);font-size:11px}
+  .delta-win{color:var(--win);font-weight:700}
+  .delta-lose{color:var(--lose);font-weight:700}
+  .tag{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--ink-soft)}
+  .tag.tide{border-color:#bcd7e4;background:#eef6fa;color:#23576d}
+  .verify-link{color:var(--accent);text-decoration:none}
+  .verify-link:hover{text-decoration:underline}
+  .empty{padding:18px 16px;color:var(--ink-soft);font-style:italic;font-family:var(--serif)}
+  footer{margin-top:22px;color:var(--ink-soft);font-size:13px;line-height:1.6}
+  footer a{color:var(--accent)}
+  details{border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  details[open]{background:#fff}
+  details summary{cursor:pointer;font-weight:600;color:var(--ink)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-coral" viewBox="0 0 16 16"><path d="M8 15V9.5C6.5 9.5 4.5 8.5 4 6c1.5.2 2.7 1 3.3 2V5C6 4.7 4.8 3.5 4.6 1.8 6.2 2.2 7.4 3.4 7.8 5h.4c.4-1.6 1.6-2.8 3.2-3.2C11.2 3.5 10 4.7 8.7 5v3c.6-1 1.8-1.8 3.3-2-.5 2.5-2.5 3.5-4 3.5V15z"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="3.6" fill="rgba(255,255,255,.35)"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 16 16"><path d="M1 9c2-2.6 4-2.6 6 0s4 2.6 6 0l2-2.4V10c-2 2.6-4.4 2.6-6.4.4C6.8 8.2 5 8.4 3.4 10.6L1 13z"/></symbol>
+  <symbol id="i-anchor" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 0-.7 3.9V6H5v1.5h2.3v5.3A5 5 0 0 1 3.6 9.5L2 10.6A6.6 6.6 0 0 0 8 15a6.6 6.6 0 0 0 6-4.4l-1.6-1.1a5 5 0 0 1-3.7 3.3V7.5H11V6H8.7V4.9A2 2 0 0 0 8 1zm0 1.3a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 16 16"><path d="M2 6v4h2.6L9 13.4V2.6L4.6 6z"/><path d="M10.8 5.2a3.6 3.6 0 0 1 0 5.6l-.9-1.1a2.2 2.2 0 0 0 0-3.4zM12.4 3a6 6 0 0 1 0 10l-.9-1.1a4.6 4.6 0 0 0 0-7.8z"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 16 16"><path d="M2 6v4h2.6L9 13.4V2.6L4.6 6z"/><path d="M10.5 6.2 11.6 5l3.2 3.2-1.1 1.1 1.1 1.1-1.1 1.1-1.1-1.1-1.1 1.1-1.1-1.1 1.1-1.1-1.1-1.1z" transform="translate(-.6 -.4)"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 16 16"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 1.5A5.5 5.5 0 1 1 8 13.5 5.5 5.5 0 0 1 8 2.5zm3 2.5-4.2 1.8L5 11l4.2-1.8z"/></symbol>
+</svg>
+<div class="wrap">
+  <header>
+    <h1><svg class="ic"><use href="#i-coral"/></svg>REEF RUN</h1>
+    <span class="tagline">chart your course before the tide</span>
+    <span class="spacer"></span>
+    <span class="chip" title="Bitcoin testnet4 tip"><svg class="ic" style="fill:var(--accent)"><use href="#i-wave"/></svg> <small>tide</small> <span id="tide-height">—</span></span>
+    <span class="chip purse"><svg class="ic"><use href="#i-coin"/></svg> <small>purse</small> <span id="purse">0</span></span>
+    <button class="chip" id="sound-btn" aria-label="toggle sound"><svg class="ic" id="sound-ic"><use href="#i-sound"/></svg></button>
+  </header>
+
+  <div class="board">
+    <div class="chart-frame">
+      <canvas id="chart" width="660" height="560"></canvas>
+      <div id="scrim"></div>
+      <div id="banner"><div class="inner" id="banner-inner"><div class="head" id="banner-head"></div><div class="sub" id="banner-sub"></div></div></div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>The plan <span class="right" id="run-no"></span></h2>
+        <div class="slip">
+          <div class="seg" id="mode">
+            <button data-mode="practice" class="on" title="Instant, local seed — for fun">Practice</button>
+            <button data-mode="tide" title="The next Bitcoin block decides — provably fair"><svg class="ic"><use href="#i-anchor"/></svg>&nbsp;The Tide</button>
+          </div>
+          <div>
+            <label>Reefs in the water</label>
+            <div class="seg" id="reefs" style="margin-top:5px">
+              <button data-r="3">3 reefs</button>
+              <button data-r="5" class="on">5 reefs</button>
+              <button data-r="7">7 reefs</button>
+            </div>
+          </div>
+          <div class="row">
+            <label for="stake">Stake</label>
+            <input id="stake" type="number" min="1" step="1" value="50" inputmode="numeric">
+          </div>
+          <div class="quick" id="quick">
+            <button data-q="10">10</button><button data-q="50">50</button>
+            <button data-q="100">100</button><button data-q="max">Max</button>
+          </div>
+          <div class="facts">
+            <div><div class="k">Course</div><div class="v" id="f-course">—</div></div>
+            <div><div class="k">Clear odds</div><div class="v" id="f-chance">—</div></div>
+            <div><div class="k">Pays</div><div class="v" id="f-mult">—</div></div>
+            <div><div class="k">Returns</div><div class="v" id="f-ret">—</div></div>
+          </div>
+          <div id="tide-note"><svg class="ic"><use href="#i-anchor"/></svg> Your run sails on block <b id="tide-block">—</b> — the tide turns in ~10 min, plus one block to confirm. Come back anytime; the result waits.</div>
+          <button id="go-btn">Chart at least one tile</button>
+          <div class="hint" id="mode-hint">Tap the chart to plot your course — up to 10 tiles. Practice runs are seeded locally and sail at once.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card log-card">
+    <h2>The log <span class="right" id="log-count"></span></h2>
+    <div id="log-empty" class="empty">No runs yet. Plot a course, set your stake, and brave the reef.</div>
+    <table class="log" id="log" style="display:none">
+      <thead><tr><th>Run</th><th>Course</th><th class="num">Stake</th><th>Outcome</th><th class="num">Net</th><th>Proof</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <footer>
+    <details>
+      <summary>Provably fair — how the tide decides</summary>
+      <p>In <b>Tide</b> mode your run names a Bitcoin (testnet4) block that does not exist yet.
+      When it is mined — and one more block confirms it — the reefs are placed by
+      <code>sha256(blockHash | mark)</code>, your <i>mark</i> being a random nonce fixed when you
+      committed your course. Nobody, not even this page, knows where the reefs lie before the
+      tide comes in, and anyone can recompute them afterwards from public chain data — the
+      <b>verify ✓</b> in the log does exactly that, in your browser. If a deep reorg ever moves
+      a settled block, verify says so instead of pretending.</p>
+      <p>You shape your own odds: more reefs and longer courses both raise the payout, and every
+      combination carries the identical 3% house edge — the maths is open in
+      <a href="reef.js">reef.js</a>, pure and testable.</p>
+      <p>Practice mode is seeded locally and marked as such — instant, but not provable.</p>
+    </details>
+    <p>Doubloons are play money. Part of <a href="https://tide-games.github.io/">the fleet</a> ·
+    source on <a href="https://github.com/tide-games/reef-run">GitHub</a> ·
+    house edge 3%, identical for every course.</p>
+  </footer>
+</div>
+
+<script type="module">
+import { GRID, REEF_OPTIONS, MAX_PICKS, chance, quote, reefsFromSeed, revealOrder, settle }
+  from './reef.js';
+
+/* ================================================================ state */
+const LS = { purse:'reef-purse', log:'reef-log', pending:'reef-pending', sound:'reef-sound', runs:'reef-runs' };
+const $ = (id) => document.getElementById(id);
+const MEMPOOL = 'https://mempool.space/testnet4/api';
+const MINUS = '−';
+const COLS = 5, TILE = 96, PAD = 60, TOP = 44;
+
+let purse = load(LS.purse, 1000);
+let runNo = load(LS.runs, 0);
+let log = load(LS.log, []);
+let pending = load(LS.pending, null);  // {height, mark, reefs, picks, stake, placedAt}
+let soundOn = load(LS.sound, true);
+let reefCount = 5;
+let picks = [];                        // charted course, in pick order
+let mode = 'practice';
+let running = false;
+
+function load(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch{ return d; } }
+function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+const fmt = (n) => n.toLocaleString('en-US');
+const fmtDelta = (n) => (n >= 0 ? '+' : MINUS) + fmt(Math.abs(n));
+const sleep = (ms) => new Promise((r)=>setTimeout(r, ms));
+const tileName = (t) => 'ABCDE'[t % COLS] + (Math.floor(t / COLS) + 1);
+
+async function sha256hex(s){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map((x)=>x.toString(16).padStart(2,'0')).join('');
+}
+const randHex = (n=16) => [...crypto.getRandomValues(new Uint8Array(n))].map((x)=>x.toString(16).padStart(2,'0')).join('');
+
+/* ================================================================ audio */
+let AC = null;
+function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); return AC; }
+function env(g,t0,a,peak,d){ g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(peak,t0+a); g.gain.exponentialRampToValueAtTime(0.0001,t0+a+d); }
+function blip(freq=1320, peak=0.035){
+  if(!soundOn) return; const c=ac(), t=c.currentTime;
+  const o=c.createOscillator(), g=c.createGain(); o.type='triangle'; o.frequency.value=freq;
+  o.connect(g); g.connect(c.destination); env(g,t,0.006,peak,0.07); o.start(t); o.stop(t+0.1);
+}
+function stampThud(){
+  if(!soundOn) return; const c=ac(), t=c.currentTime;
+  const o=c.createOscillator(), g=c.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(140,t+0.06);
+  o.connect(g); g.connect(c.destination); env(g,t,0.005,0.09,0.12); o.start(t); o.stop(t+0.16);
+}
+function crunch(){
+  if(!soundOn) return; const c=ac(), t=c.currentTime;
+  const len=c.sampleRate*0.25, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+  const src=c.createBufferSource(); src.buffer=buf;
+  const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900;
+  const g=c.createGain(); g.gain.value=0.22;
+  src.connect(f); f.connect(g); g.connect(c.destination); src.start(t);
+  const o=c.createOscillator(), og=c.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(90,t); o.frequency.exponentialRampToValueAtTime(45,t+0.2);
+  o.connect(og); og.connect(c.destination); env(og,t,0.008,0.2,0.3); o.start(t); o.stop(t+0.35);
+}
+function fanfare(win){
+  if(!soundOn) return; const c=ac(), t=c.currentTime;
+  const notes = win ? [523,659,784,1047] : [330,262];
+  notes.forEach((f,i)=>{ const o=c.createOscillator(), g=c.createGain();
+    o.type='triangle'; o.frequency.value=f; o.connect(g); g.connect(c.destination);
+    env(g,t+i*0.13,0.02,0.11,win?0.5:0.4); o.start(t+i*0.13); o.stop(t+i*0.13+0.6); });
+}
+
+/* ================================================================ the chart */
+const cv = $('chart'), ctx = ctxFor(cv);
+const W = 660, H = 560;
+function ctxFor(canvas){
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = 660*dpr; canvas.height = 560*dpr;
+  canvas.style.aspectRatio = '660 / 560';
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  return c;
+}
+const tileXY = (t) => [PAD + (t%COLS)*TILE, TOP + Math.floor(t/COLS)*TILE];
+let t0 = performance.now();
+let shake = 0;
+let confetti = [];
+// reveal state: tile -> 'clear' | 'reef'; set during the run's theatre
+let revealed = {};
+let stampAt = {};   // tile -> time it was stamped, for the stamp pop
+let ghostReefs = null; // after a loss: the full reef chart, shown faintly
+
+function drawChart(now){
+  const t = now - t0;
+  ctx.clearRect(0,0,W,H);
+  if(shake > 0.3){ ctx.save(); ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake); shake *= 0.93; }
+  else { ctx.save(); shake = 0; }
+
+  // parchment
+  const g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'#f3e8cd'); g.addColorStop(0.5,'#efe2c4'); g.addColorStop(1,'#e9dab8');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // aged blotches
+  for(let i=0;i<5;i++){
+    const bx=(i*173)%W, by=60+(i*211)%(H-100);
+    const bg=ctx.createRadialGradient(bx,by,4,bx,by,70);
+    bg.addColorStop(0,'rgba(160,130,80,.05)'); bg.addColorStop(1,'rgba(160,130,80,0)');
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(bx,by,70,0,7); ctx.fill();
+  }
+  // compass rose, top right
+  ctx.save(); ctx.translate(W-62,66); ctx.strokeStyle='rgba(92,74,45,.5)'; ctx.fillStyle='rgba(92,74,45,.5)';
+  ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(0,0,24,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,0,18,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(5,0); ctx.lineTo(0,24); ctx.lineTo(-5,0); ctx.closePath(); ctx.fill();
+  ctx.font='700 11px Georgia,serif'; ctx.textAlign='center'; ctx.fillText('N',0,-30);
+  ctx.restore(); ctx.textAlign='start';
+  // title cartouche, bottom left
+  ctx.font='italic 15px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.65)';
+  ctx.fillText('Chart of the Reef Grounds — soundings unknown', PAD, H-16);
+
+  // grid labels
+  ctx.font='600 12px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.75)'; ctx.textAlign='center';
+  for(let c2=0;c2<COLS;c2++) ctx.fillText('ABCDE'[c2], PAD+c2*TILE+TILE/2, TOP-12);
+  for(let r=0;r<COLS;r++) ctx.fillText(String(r+1), PAD-16, TOP+r*TILE+TILE/2+4);
+  ctx.textAlign='start';
+
+  // tiles
+  for(let i=0;i<GRID;i++){
+    const [x,y] = tileXY(i);
+    const st = revealed[i];
+    const picked = picks.includes(i);
+    // base water tile
+    ctx.fillStyle = st==='reef' ? '#d8c9a8' : '#dceef2';
+    if(st==='clear') ctx.fillStyle='#cfe9ee';
+    roundRect(x+4,y+4,TILE-8,TILE-8,10);
+    ctx.fill();
+    ctx.strokeStyle='rgba(92,74,45,.35)'; ctx.lineWidth=1.2;
+    roundRect(x+4,y+4,TILE-8,TILE-8,10); ctx.stroke();
+    // gentle water lines on unrevealed tiles
+    if(!st){
+      ctx.strokeStyle='rgba(30,111,142,.18)'; ctx.lineWidth=1.2;
+      for(let w=0;w<2;w++){
+        const wy=y+34+w*24 + Math.sin(t*0.0016+i+w)*1.5;
+        ctx.beginPath();
+        for(let wx=x+14;wx<=x+TILE-14;wx+=8){
+          const yy=wy+Math.sin(wx*0.12+t*0.002+i)*1.6;
+          wx===x+14?ctx.moveTo(wx,yy):ctx.lineTo(wx,yy);
+        }
+        ctx.stroke();
+      }
+    }
+    // stamp pop scale
+    const age = stampAt[i]!=null ? Math.min(1,(now-stampAt[i])/260) : 1;
+    const pop = st ? (1 + 0.35*(1-easeOut(age))) : 1;
+    if(st==='clear'){
+      // open water: a calm sounding mark
+      ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(pop,pop);
+      ctx.strokeStyle='#1e6f8e'; ctx.lineWidth=3; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-16,2); ctx.quadraticCurveTo(-8,-8,0,2); ctx.quadraticCurveTo(8,12,16,2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-10,12); ctx.quadraticCurveTo(0,4,10,12); ctx.stroke();
+      ctx.restore();
+    } else if(st==='reef'){
+      // the reef: dark jags and a warning ring
+      ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(pop,pop);
+      ctx.fillStyle='#3d3226';
+      ctx.beginPath(); ctx.moveTo(-20,14); ctx.lineTo(-10,-12); ctx.lineTo(-2,4);
+      ctx.lineTo(6,-16); ctx.lineTo(14,8); ctx.lineTo(20,14); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#b0483f'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,0,26,0,7); ctx.stroke();
+      ctx.restore();
+    }
+    // faint ghost reef (post-loss chart disclosure)
+    if(ghostReefs && ghostReefs.includes(i) && !st){
+      ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.globalAlpha=0.28;
+      ctx.fillStyle='#3d3226';
+      ctx.beginPath(); ctx.moveTo(-14,10); ctx.lineTo(-6,-8); ctx.lineTo(0,2);
+      ctx.lineTo(6,-10); ctx.lineTo(12,10); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    // course marker
+    if(picked && st!=='reef'){
+      const n = picks.indexOf(i)+1;
+      ctx.save(); ctx.translate(x+TILE-22,y+22);
+      ctx.fillStyle='#b0483f';
+      ctx.beginPath(); ctx.arc(0,0,11,0,7); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='700 11px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(n),0,0.5);
+      ctx.restore(); ctx.textAlign='start'; ctx.textBaseline='alphabetic';
+      if(!st){
+        ctx.strokeStyle='rgba(176,72,63,.8)'; ctx.lineWidth=2.5; ctx.lineCap='round';
+        const cx2=x+TILE/2, cy2=y+TILE/2;
+        ctx.beginPath(); ctx.moveTo(cx2-10,cy2-10); ctx.lineTo(cx2+10,cy2+10);
+        ctx.moveTo(cx2+10,cy2-10); ctx.lineTo(cx2-10,cy2+10); ctx.stroke();
+      }
+    }
+  }
+  // the course line: dashed pencil route through picks in order
+  if(picks.length>1){
+    ctx.strokeStyle='rgba(176,72,63,.55)'; ctx.lineWidth=2; ctx.setLineDash([6,6]);
+    ctx.beginPath();
+    picks.forEach((p,idx)=>{
+      const [x,y]=tileXY(p);
+      idx===0?ctx.moveTo(x+TILE/2,y+TILE/2):ctx.lineTo(x+TILE/2,y+TILE/2);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  drawConfetti();
+  ctx.restore();
+  requestAnimationFrame(drawChart);
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+const easeOut = (u)=>1-((1-u)**3);
+function drawConfetti(){
+  confetti = confetti.filter((p)=>p.y<H+10);
+  for(const p of confetti){
+    p.x+=p.vx*16; p.y+=p.vy*16; p.vy+=0.007; p.r+=p.vr*16;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r);
+    ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s*0.35,p.s,p.s*0.7); ctx.restore();
+  }
+}
+function celebrate(){
+  const cs=['#1e6f8e','#b8860b','#1e7d4f','#b0483f','#f4f2ea'];
+  for(let wave=0;wave<3;wave++) setTimeout(()=>{
+    for(let i=0;i<70;i++) confetti.push({
+      x:Math.random()*W, y:-10-Math.random()*30,
+      vx:(Math.random()-0.5)*0.12, vy:0.06+Math.random()*0.1,
+      vr:(Math.random()-0.5)*0.02, r:Math.random()*6, s:4+Math.random()*6,
+      c:cs[i%cs.length],
+    });
+  }, wave*350);
+  shake = 5;
+}
+requestAnimationFrame(drawChart);
+
+/* ================================================================ run flow */
+async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
+  running = true; renderSlip(); hideBanner();
+  const out = settle({ picks: picksIn, reefs, stake, seedHex });
+  // Books settle the moment the seed exists; the reveal is theatre (a reload
+  // can never eat a stake).
+  purse += out.payout; save(LS.purse, purse);
+  runNo++; save(LS.runs, runNo);
+  log.unshift({
+    n: runNo, picks: picksIn, reefs, stake, won: out.won,
+    hits: out.hits, delta: out.delta, mode: tideInfo?'tide':'practice',
+    height: tideInfo?.height ?? null, mark: tideInfo?.mark ?? null,
+    blockHash: tideInfo?.blockHash ?? null, at: Date.now(),
+  });
+  log = log.slice(0,60); save(LS.log, log);
+
+  // The theatre: stamp the course tile by tile in the seed's order. A hit
+  // stops the run where a real reef would.
+  revealed = {}; stampAt = {}; ghostReefs = null;
+  const order = revealOrder(seedHex, picksIn);
+  const reefSet = new Set(out.reefTiles);
+  await sleep(400);
+  let sunk = false;
+  for(const tile of order){
+    if(document.visibilityState==='visible') await sleep(650); // pacing only when watched
+    const hit = reefSet.has(tile);
+    revealed[tile] = hit ? 'reef' : 'clear';
+    stampAt[tile] = performance.now();
+    if(hit){ crunch(); shake = Math.max(shake, 6); sunk = true; break; }
+    stampThud();
+  }
+  // stamp any un-revealed course tiles instantly if we sank mid-route
+  if(sunk) for(const tile of order){ if(revealed[tile]==null){ revealed[tile]='clear'; } }
+  await sleep(500);
+  fanfare(out.won);
+  if(out.won) celebrate();
+  else ghostReefs = out.reefTiles; // show where the reefs lay — the chart owes you that
+  showBanner(
+    out.won ? 'Clean passage!' : `Wrecked on ${tileName(out.hits[0])}`,
+    out.won ? `Every sounding came up clear — <b class="win">${fmtDelta(out.delta)}</b> doubloons`
+            : `The reef took your stake: <b class="lose">${fmtDelta(out.delta)}</b> doubloons`,
+    out.won,
+  );
+  await sleep(600);
+  running = false;
+  picks = [];
+  renderAll();
+}
+
+function showBanner(head, subHTML, won){
+  $('banner-head').textContent = head;
+  $('banner-sub').innerHTML = subHTML;
+  $('banner-inner').className = 'inner ' + (won===true?'win':won===false?'lose':'');
+  $('banner').classList.add('show'); $('scrim').classList.add('show');
+  clearTimeout(showBanner.t);
+  showBanner.t = setTimeout(hideBanner, 6000);
+}
+function hideBanner(){ $('banner').classList.remove('show'); $('scrim').classList.remove('show'); }
+
+/* ---------------- practice ---------------- */
+async function practiceRun(){
+  const st = stakeVal();
+  purse -= st; save(LS.purse, purse); renderHeader();
+  const seed = await sha256hex('practice|' + randHex(16));
+  await runCourse({ seedHex: seed, picksIn: [...picks], reefs: reefCount, stake: st });
+}
+
+/* ---------------- the tide (1-conf settle, reorg-aware verify) ---------------- */
+let tipHeight = null, tipAt = 0;
+async function fetchTip(){
+  if(Date.now()-tipAt < 30_000 && tipHeight) return tipHeight;
+  const r = await fetch(MEMPOOL + '/blocks/tip/height');
+  if(!r.ok) throw new Error('tip ' + r.status);
+  tipHeight = Number(await r.text()); tipAt = Date.now();
+  $('tide-height').textContent = fmt(tipHeight);
+  return tipHeight;
+}
+const blockHashCache = {};
+async function hashAtHeight(h, { cacheOk=false } = {}){
+  if(cacheOk && blockHashCache[h]) return blockHashCache[h];
+  const r = await fetch(MEMPOOL + '/block-height/' + h);
+  if(r.status===404) return null;
+  if(!r.ok) throw new Error('block ' + r.status);
+  const hash = (await r.text()).trim();
+  if(cacheOk) blockHashCache[h] = hash;
+  return hash;
+}
+async function tideRun(){
+  const st = stakeVal();
+  const tip = await fetchTip();
+  const height = tip + 1;
+  const mark = randHex(16);
+  purse -= st; save(LS.purse, purse);
+  pending = { height, mark, reefs: reefCount, picks: [...picks], stake: st, placedAt: Date.now() };
+  save(LS.pending, pending);
+  renderAll();
+  showBanner('The course is committed', `Your run sails on block <b>${fmt(height)}</b> — the tide turns in about ten minutes.`);
+  watchTide();
+}
+let tideTimer = null;
+async function trySettleTide(){
+  if(!pending) return false;
+  tipAt = 0; const tip = await fetchTip();
+  if(tip < pending.height + 1) return false;      // one confirmation, always
+  const hash = await hashAtHeight(pending.height, { cacheOk:true });
+  if(!hash) return false;
+  if(tideTimer){ clearInterval(tideTimer); tideTimer = null; }
+  const p = pending; pending = null; save(LS.pending, null);
+  const seed = await sha256hex(hash + '|' + p.mark);
+  picks = [...p.picks]; reefCount = p.reefs; renderReefSeg();
+  await runCourse({ seedHex: seed, picksIn: p.picks, reefs: p.reefs, stake: p.stake,
+    tideInfo: { height: p.height, mark: p.mark, blockHash: hash } });
+  return true;
+}
+function watchTide(){
+  if(tideTimer || !pending) return;
+  tideTimer = setInterval(()=>{ trySettleTide().catch(()=>{}); }, 30_000);
+  trySettleTide().catch(()=>{});
+}
+
+/* ================================================================ UI */
+function stakeVal(){
+  const v = Math.floor(Number($('stake').value));
+  return Number.isFinite(v)&&v>0 ? v : 0;
+}
+function renderHeader(){
+  $('purse').textContent = fmt(purse);
+  $('sound-ic').innerHTML = `<use href="#i-${soundOn?'sound':'mute'}"/>`;
+}
+function renderReefSeg(){
+  $('reefs').querySelectorAll('button').forEach((b)=>
+    b.classList.toggle('on', Number(b.dataset.r)===reefCount));
+}
+function renderSlip(){
+  const st = stakeVal(), k = picks.length;
+  $('run-no').textContent = 'run ' + fmt(runNo+1);
+  $('f-course').textContent = k ? `${k} tile${k>1?'s':''}` : '—';
+  if(k){
+    const q = quote(reefCount, k, Math.max(1, st||1));
+    $('f-chance').textContent = (q.chance*100).toFixed(q.chance<0.1?1:0) + '%';
+    $('f-mult').textContent = '× ' + q.multiplier.toFixed(2);
+    $('f-ret').innerHTML = st>0 ? fmt(q.payout) + ' <svg class="ic"><use href="#i-coin"/></svg>' : '—';
+  } else {
+    $('f-chance').textContent = '—'; $('f-mult').textContent = '—'; $('f-ret').textContent = '—';
+  }
+  document.querySelectorAll('#quick button').forEach((b)=>{
+    const on = b.dataset.q==='max' ? (st===purse && purse>0) : b.dataset.q===String(st);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  const btn = $('go-btn');
+  const tideBlocked = mode==='tide' && !!pending;
+  btn.disabled = running || tideBlocked || !k || st<=0 || st>purse;
+  btn.textContent =
+    running ? 'Running the reef…' :
+    tideBlocked ? 'Waiting on the tide…' :
+    !k ? 'Chart at least one tile' :
+    st>purse ? 'Not enough doubloons' :
+    mode==='tide' ? 'Commit course to the next block' : 'Run the reef';
+  $('tide-note').style.display = pending ? 'block' : 'none';
+  if(pending) $('tide-block').textContent = fmt(pending.height);
+  $('mode-hint').textContent = mode==='tide'
+    ? 'Your course and mark are fixed now; the next testnet4 block places the reefs. Verifiable by anyone, forever.'
+    : 'Tap the chart to plot your course — up to 10 tiles. Practice runs are seeded locally and sail at once.';
+}
+function ago(ts){
+  const s = Math.max(0,(Date.now()-ts)/1000);
+  if(s<90) return 'just now';
+  if(s<3600) return Math.round(s/60)+' min ago';
+  if(s<86400) return Math.round(s/3600)+' h ago';
+  return Math.round(s/86400)+' d ago';
+}
+function renderLog(){
+  $('log-count').textContent = log.length ? `${log.length} run${log.length>1?'s':''}` : '';
+  $('log-empty').style.display = log.length ? 'none':'block';
+  $('log').style.display = log.length ? 'table':'none';
+  const tb = $('log').querySelector('tbody'); tb.innerHTML='';
+  for(const r of log){
+    const tr = document.createElement('tr');
+    const proof = r.mode==='tide'
+      ? `<a class="verify-link" href="https://mempool.space/testnet4/block/${r.blockHash}" target="_blank" rel="noopener">block ${fmt(r.height)}</a>
+         · <a href="#" class="verify-link" data-verify="${r.n}">verify ✓</a>`
+      : `<span class="tag">practice</span>`;
+    tr.innerHTML = `
+      <td>#${r.n} ${r.mode==='tide'?'<span class="tag tide">tide</span>':''}<br><span class="when" title="${new Date(r.at).toLocaleString()}">${ago(r.at)}</span></td>
+      <td>${r.picks.map(tileName).join(' → ')} <span class="tag">${r.reefs} reefs</span></td>
+      <td class="num">${fmt(r.stake)}</td>
+      <td>${r.won ? 'clean passage' : 'wrecked on ' + tileName(r.hits[0])}</td>
+      <td class="num ${r.delta>=0?'delta-win':'delta-lose'}">${fmtDelta(r.delta)}</td>
+      <td>${proof}</td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll('[data-verify]').forEach((a)=> a.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    const r = log.find((x)=>String(x.n)===a.dataset.verify);
+    let canonical = null;
+    try{ canonical = await hashAtHeight(r.height); }catch{}
+    if(canonical && canonical !== r.blockHash){
+      a.textContent = 'block reorged ⚠'; a.style.color = 'var(--gold)';
+      a.title = 'testnet4 reorged: the block this run settled on is no longer canonical.';
+      return;
+    }
+    const seed = await sha256hex(r.blockHash + '|' + r.mark);
+    const v = settle({ picks: r.picks, reefs: r.reefs, stake: r.stake, seedHex: seed });
+    const okV = v.won===r.won && v.delta===r.delta;
+    a.textContent = okV ? 'verified ✓' : 'MISMATCH ✗';
+    a.style.color = okV ? 'var(--win)' : 'var(--lose)';
+    a.title = `sha256(block|mark) places reefs at ${v.reefTiles.map(tileName).join(', ')}`;
+  }));
+}
+function renderAll(){ renderHeader(); renderReefSeg(); renderSlip(); renderLog(); }
+
+/* ---------------- events ---------------- */
+cv.addEventListener('click', (e)=>{
+  if(running || pending) return;
+  const rect = cv.getBoundingClientRect();
+  const x = (e.clientX-rect.left) * (W/rect.width);
+  const y = (e.clientY-rect.top) * (H/rect.height);
+  const col = Math.floor((x-PAD)/TILE), row = Math.floor((y-TOP)/TILE);
+  if(col<0||col>=COLS||row<0||row>=COLS) return;
+  const tile = row*COLS+col;
+  const at = picks.indexOf(tile);
+  if(at>=0){ picks.splice(at,1); blip(880); }
+  else if(picks.length<MAX_PICKS){ picks.push(tile); blip(); }
+  else { blip(300,0.05); return; }
+  revealed = {}; ghostReefs = null;
+  renderSlip();
+});
+$('reefs').addEventListener('click',(e)=>{
+  const b=e.target.closest('button'); if(!b || pending) return;
+  reefCount = Number(b.dataset.r); blip(); renderReefSeg(); renderSlip();
+});
+$('mode').addEventListener('click',(e)=>{
+  const b=e.target.closest('button'); if(!b) return;
+  mode=b.dataset.mode; blip();
+  $('mode').querySelectorAll('button').forEach((x)=>x.classList.toggle('on',x===b));
+  if(mode==='tide') fetchTip().catch(()=>{});
+  renderSlip();
+});
+$('stake').addEventListener('input', renderSlip);
+$('quick').addEventListener('click',(e)=>{
+  const b=e.target.closest('button'); if(!b) return;
+  $('stake').value = b.dataset.q==='max' ? Math.max(1,purse) : b.dataset.q;
+  blip(); renderSlip();
+});
+$('go-btn').addEventListener('click', async ()=>{
+  const st=stakeVal();
+  if(running||!picks.length||st<=0||st>purse||(mode==='tide'&&pending)) return;
+  ac().resume?.();
+  if(mode==='tide'){ try{ await tideRun(); }catch{ showBanner('The tide is out of reach','Could not reach the chain — check your connection and try again.'); } }
+  else practiceRun();
+});
+$('sound-btn').addEventListener('click',()=>{ soundOn=!soundOn; save(LS.sound,soundOn); renderHeader(); if(soundOn) blip(); });
+
+/* ---------------- boot ---------------- */
+if(purse<=0 && !pending){ purse = 1000; save(LS.purse, purse); }
+if(pending){ picks = [...pending.picks]; reefCount = pending.reefs; }
+renderAll();
+fetchTip().catch(()=>{ $('tide-height').textContent='offline'; });
+if(pending) watchTide();
+</script>
+</body>
+</html>
