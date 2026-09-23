@@ -4,7 +4,10 @@
 
 A 5×5 chart hides 3, 5 or 7 reefs. Plot a course — up to 10 tiles — *before*
 anyone knows where the reefs lie. In **⚓ Tide** mode your course and a random
-mark are committed against a testnet4 block that does not exist yet; when it is
+mark are committed against a block that does not exist yet on **Blake's
+testnet4** — the BLAKE2b fork of Bitcoin testnet4 (parted at block 150,308),
+served by [mempool.guide](https://mempool.guide/testnet4). Runs committed
+before the move settle and verify on plain testnet4, the chain they chose; when it is
 mined (plus one confirmation, because [reorgs are real](https://github.com/melvincarvalho/tavern/issues/1)),
 `sha256(blockHash | mark)` places the reefs. Every sounding clear and the course
 pays `C(25,K)/C(25−R,K)` less a 3% edge — you shape your own odds twice over,
@@ -17,6 +20,18 @@ reorged under a settled block.
 
 **Play: <https://tide-games.github.io/reef-run/>** · part of
 [the fleet](https://tide-games.github.io/)
+
+## Playing
+
+- **Practice** runs sail at once; **⚓ Tide** seals your course to the next
+  Blake testnet4 block; the **Daily** chart is the same for everyone each day
+  (its reef count changes daily), scored by the × your course survives, with a
+  spoiler-free share strip and a rank against the fleet.
+- **Let it ride** after a win, then ride on or bank it — the stake you see is
+  always the stake that sails.
+- A **captain's log** with stats and milestones; a refit when the purse runs dry.
+- Keyboard play (arrows across the chart), screen-reader narration of every
+  sounding, reduced motion, and a phone layout that keeps the reveal in view.
 
 ## The maths is a library
 

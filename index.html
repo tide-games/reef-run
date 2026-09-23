@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Reef Run — chart your course before the tide</title>
 <meta name="description" content="Chart a course through hidden reefs. The next Bitcoin block places them — nobody knows where they lie before the tide comes in. Provably fair, pure static.">
 <meta property="og:type" content="website">
@@ -26,6 +27,10 @@
     --win:#1e7d4f; --lose:#b0483f;
     --serif:"Iowan Old Style",Palatino,Georgia,serif;
   }
+  :root{color-scheme:light}
+  .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  @media (prefers-reduced-motion:reduce){ #banner,#scrim{transition:opacity .2s} #banner{transform:none!important} }
+  @media (pointer:coarse){ .linkbtn,#banner-act button{min-height:44px} .quick button,.seg button,.mini button{min-height:44px} #sound-btn,header .chip{min-height:44px} #sound-btn{padding:10px 13px} details summary{padding:10px 0} footer a{display:inline-block;padding:10px 0} }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
@@ -41,6 +46,8 @@
   .ic{width:1em;height:1em;vertical-align:-0.125em;fill:currentColor}
 
   header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 2px 10px}
+  @media (max-width:800px){ header{gap:8px} header .chip{padding:6px 10px} }
+  @media (max-width:420px){ h1{font-size:28px} .tagline{font-size:13px} header .chip{padding:5px 8px;gap:5px} }
   h1{font:700 34px/1 var(--serif);letter-spacing:.06em;margin:0}
   h1 .ic{width:26px;height:26px;vertical-align:-2px;margin-right:4px;fill:#c94f4f}
   .tagline{color:var(--ink-soft);font-style:italic;font-family:var(--serif)}
@@ -53,11 +60,13 @@
   .chip small{font-weight:500;color:var(--ink-soft)}
   .chip.purse{border-color:#dcbf74;background:#fdf8ea}
   .chip.purse .ic{fill:var(--gold)}
+  a.chip{text-decoration:none;color:var(--ink)}
   button.chip{cursor:pointer;font:inherit;font-weight:600;color:var(--ink)}
   button.chip:hover{border-color:var(--accent)}
 
   .board{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
-  @media (max-width:840px){.board{grid-template-columns:1fr}}
+  @media (max-width:840px){.board{grid-template-columns:minmax(0,1fr)}}
+  .board>*{min-width:0}
 
   .chart-frame{
     position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;
@@ -81,7 +90,7 @@
   }
   #scrim.show{opacity:1}
   #banner{
-    position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;
+    position:absolute;left:0;right:0;top:auto;bottom:8%;text-align:center;pointer-events:none;
     opacity:0;transform:translateY(10px) scale(.94);
     transition:opacity .18s ease, transform .3s cubic-bezier(.2,1.4,.4,1);
   }
@@ -91,12 +100,19 @@
     border-top:4px solid var(--accent);border-radius:12px;padding:16px 30px;
     box-shadow:0 18px 44px -14px rgba(50,38,15,.55);
   }
+  #banner.top{top:4%;bottom:auto}
+  #banner.show .inner{pointer-events:auto;cursor:pointer}
+  #banner-act:not(:empty){margin-top:8px;display:flex;gap:8px;justify-content:center;pointer-events:auto}
+  #banner:not(.show) #banner-act{pointer-events:none}
+  #banner-act button{min-height:40px;padding:6px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);font:700 13px system-ui;cursor:pointer}
+  #banner-act button.go{background:var(--accent);border-color:var(--accent);color:#fff}
   #banner .inner.win{border-top-color:var(--win)}
   #banner .inner.lose{border-top-color:var(--lose)}
   #banner .head{font:700 32px/1.15 var(--serif);letter-spacing:.02em}
   #banner .sub{color:var(--ink-soft);margin-top:6px;font-variant-numeric:tabular-nums;font-size:15px}
   #banner .sub b{font-size:18px}
   #banner .sub b.win{color:var(--win)} #banner .sub b.lose{color:var(--lose)}
+  @media (max-width:600px), (max-height:500px){ #banner{bottom:4%} #banner .inner{padding:8px 14px;max-width:92%} #banner .head{font-size:20px} #banner .sub{font-size:13px;margin-top:3px} #banner .sub b{font-size:15px} }
 
   .card{
     background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;
@@ -120,7 +136,7 @@
   .seg button.on{background:var(--accent);color:#fff}
   .seg button:not(.on):hover{color:var(--accent)}
   .seg button:focus-visible{outline-offset:-3px}
-  .locked .seg button,.locked .quick button{opacity:.55;cursor:not-allowed}
+  .locked .seg:not(#mode) button,.locked .quick button,.mini button:disabled{opacity:.55;cursor:not-allowed}
   .chart-frame.locked canvas{cursor:default}
   #stake{
     flex:1;min-width:0;font:600 20px/1 system-ui;color:var(--ink);background:var(--paper);
@@ -141,19 +157,41 @@
     font-variant-numeric:tabular-nums;
   }
   .facts div{background:var(--paper-2);padding:8px 12px}
-  .facts .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  .facts .k{color:#55626d!important;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
   .facts .v{font:700 17px/1.3 system-ui}
   .facts .v .ic{width:13px;height:13px;fill:var(--gold)}
   #go-btn{
     border:0;border-radius:10px;padding:13px;cursor:pointer;
     font:700 15px system-ui;letter-spacing:.04em;color:#fff;
-    background:linear-gradient(#2a86a8,var(--accent));
+    background:linear-gradient(#257c9b,var(--accent));
     box-shadow:0 6px 14px -6px rgba(30,111,142,.55), inset 0 1px 0 rgba(255,255,255,.25);
   }
+  #go-btn.arm{background:linear-gradient(#b0483f,#8f3a33)}
   #go-btn:hover{filter:brightness(1.06)}
   #go-btn:active{transform:translateY(1px)}
-  #go-btn:disabled{background:#ddd6c4;color:#4a4438;box-shadow:none;cursor:default}
+  #go-btn[aria-disabled="true"]{background:#ddd6c4;color:#4a4438;box-shadow:none;cursor:default}
   .hint{font-size:13px;color:var(--ink-soft);line-height:1.5}
+  #toasts{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:40}
+  body.bn #toasts{bottom:auto;top:calc(env(safe-area-inset-top) + 72px)}
+  .toast{background:#2b2418;color:#f7f1e3;border:1px solid #b8860b;border-radius:12px;padding:9px 14px;font-size:14px;box-shadow:0 10px 30px -10px rgba(0,0,0,.5);max-width:92vw}
+  .linkbtn{border:0;background:none;color:var(--accent);font:600 13px system-ui;cursor:pointer;padding:6px 0 6px 10px;text-decoration:underline;text-underline-offset:3px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:10px 0}
+  .stat{border:1px solid var(--line);border-radius:10px;padding:7px 10px} .stat small{display:block;color:var(--ink-soft);font-size:11px;text-transform:uppercase;letter-spacing:.06em} .stat b{font-size:17px;font-variant-numeric:tabular-nums}
+  .ach{list-style:none;margin:6px 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
+  .ach li{border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:13px} .ach li.off{color:var(--ink-soft)}
+  .share{white-space:pre;font:16px/1.25 ui-monospace,monospace;background:var(--paper-2);border-radius:10px;padding:10px 12px;margin:10px 0;text-align:center}
+  .slip.daily .row,.slip.daily .quick{display:none}
+  .slip.daily #reefs button:not(.on){opacity:.55;cursor:not-allowed}
+  #last-line:empty{display:none}
+  .mini{display:flex;gap:6px}
+  .mini button{flex:1;padding:6px 0;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink-soft);font:600 13px system-ui;cursor:pointer}
+  .mini button:hover{border-color:var(--accent);color:var(--accent)}
+  #last-line{font-size:13px;color:var(--ink);min-height:1.4em}
+  #last-line b.win{color:var(--win)} #last-line b.lose{color:var(--lose)}
+  dialog{border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);padding:18px 20px;max-width:min(420px,92vw)}
+  dialog::backdrop{background:rgba(40,32,16,.45)}
+  dialog h3{margin:0 0 8px;font:700 22px var(--serif)} dialog h3:focus{outline:none}
+  .btn{min-height:44px;padding:8px 16px;border-radius:10px;border:0;background:var(--accent);color:#fff;font:700 14px system-ui;cursor:pointer}
   #tide-note{display:none;background:#f3f8fb;border:1px solid #cfe3ec;border-radius:9px;padding:9px 11px;font-size:13px;color:#23576d}
   #tide-note b{font-variant-numeric:tabular-nums}
 
@@ -172,7 +210,7 @@
   .when{color:var(--ink-soft);font-size:11px}
   .delta-win{color:var(--win);font-weight:700}
   .delta-lose{color:var(--lose);font-weight:700}
-  .tag{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--ink-soft)}
+  .tag{white-space:nowrap;font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--ink-soft)}
   .tag.tide{border-color:#bcd7e4;background:#eef6fa;color:#23576d}
   .verify-link{color:var(--accent);text-decoration:none}
   .verify-link:hover{text-decoration:underline}
@@ -182,6 +220,7 @@
   details{border:1px solid var(--line);border-radius:10px;padding:10px 14px}
   details[open]{background:#fff}
   details summary{cursor:pointer;font-weight:600;color:var(--ink)}
+  @media (pointer:coarse){ details summary{padding:12px 0} #banner-act button,.linkbtn{min-height:44px} #sound-btn{min-width:46px} footer a{padding:12px 2px} }
 </style>
 </head>
 <body>
@@ -199,17 +238,17 @@
     <h1><svg class="ic"><use href="#i-coral"/></svg>REEF RUN</h1>
     <span class="tagline">chart your course before the tide</span>
     <span class="spacer"></span>
-    <span class="chip" title="Bitcoin testnet4 tip"><svg class="ic" style="fill:var(--accent)"><use href="#i-wave"/></svg> <small>tide</small> <span id="tide-height">—</span></span>
-    <span class="chip purse"><svg class="ic"><use href="#i-coin"/></svg> <small>purse</small> <span id="purse">0</span></span>
-    <button class="chip" id="sound-btn" aria-label="toggle sound"><svg class="ic" id="sound-ic"><use href="#i-sound"/></svg></button>
+    <a class="chip" href="https://mempool.guide/testnet4" target="_blank" rel="noopener" title="The latest block on the public test chain the Tide uses (Blake testnet4, on mempool.guide). A Tide run is decided by the next block after it."><svg class="ic" style="fill:var(--accent)" aria-hidden="true"><use href="#i-wave"/></svg> <small>latest block</small> <span id="tide-height">—</span></a>
+    <span class="chip purse"><svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg> <small>purse</small> <span id="purse">0</span></span>
+    <button class="chip" id="sound-btn" aria-label="Sound" aria-pressed="true"><svg class="ic" id="sound-ic"><use href="#i-sound"/></svg></button>
   </header>
 
-  <div class="board">
+  <main class="board">
     <div class="chart-frame" id="chart-frame">
-      <canvas id="chart" width="660" height="560"></canvas>
-      <div id="tile-grid" role="group" aria-label="the chart — plot your course"></div>
+      <canvas id="chart" width="660" height="560" aria-hidden="true"></canvas>
+      <div id="tile-grid" role="group" tabindex="-1" aria-label="The chart, 5 by 5: arrow keys to move, Enter to plot a tile"></div>
       <div id="scrim"></div>
-      <div id="banner"><div class="inner" id="banner-inner"><div class="head" id="banner-head"></div><div class="sub" id="banner-sub"></div></div></div>
+      <div id="banner"><div class="inner" id="banner-inner"><div aria-hidden="true"><div class="head" id="banner-head"></div><div class="sub" id="banner-sub"></div></div><div id="banner-act" role="group" aria-label="Next run"></div></div></div>
     </div>
 
     <div>
@@ -218,11 +257,12 @@
         <div class="slip">
           <div class="seg" id="mode" role="group" aria-label="game mode">
             <button data-mode="practice" class="on" title="Instant, local seed — for fun">Practice</button>
-            <button data-mode="tide" title="The next Bitcoin block decides — provably fair"><svg class="ic"><use href="#i-anchor"/></svg>&nbsp;The Tide</button>
+            <button data-mode="tide" title="The next Bitcoin block decides — provably fair"><svg class="ic" aria-hidden="true"><use href="#i-anchor"/></svg>&nbsp;The Tide</button>
+            <button data-mode="daily" title="One chart a day, the same for everyone">Daily</button>
           </div>
           <div>
-            <label>Reefs in the water</label>
-            <div class="seg" id="reefs" role="group" aria-label="reef count" style="margin-top:5px">
+            <label id="reefs-lbl">Reefs in the water</label>
+            <div class="seg" id="reefs" role="group" aria-labelledby="reefs-lbl" style="margin-top:5px">
               <button data-r="3">3 reefs</button>
               <button data-r="5" class="on">5 reefs</button>
               <button data-r="7">7 reefs</button>
@@ -238,22 +278,28 @@
           </div>
           <div class="facts">
             <div><div class="k">Course</div><div class="v" id="f-course">—</div></div>
-            <div><div class="k">Clear odds</div><div class="v" id="f-chance">—</div></div>
-            <div><div class="k">Pays</div><div class="v" id="f-mult">—</div></div>
-            <div><div class="k">Returns</div><div class="v" id="f-ret">—</div></div>
+            <div title="The chance that every tile on your course is open water"><div class="k">Clear odds</div><div class="v" id="f-chance">—</div></div>
+            <div title="If every tile is clear, your stake is multiplied by this"><div class="k">Pays</div><div class="v" id="f-mult">—</div></div>
+            <div><div class="k">Pays back</div><div class="v" id="f-ret">—</div></div>
           </div>
-          <div id="tide-note"><svg class="ic"><use href="#i-anchor"/></svg> Your run sails on block <b id="tide-block">—</b> — the tide turns in ~10 min, plus one block to confirm. Come back anytime; the result waits.</div>
+          <div class="mini">
+            <button id="rand-btn" type="button" title="Chart a random course of the same length"><span aria-hidden="true">🎲</span> Random course</button>
+            <button id="clear-btn" type="button">Clear chart</button>
+          </div>
+          <div id="tide-note"><svg class="ic" aria-hidden="true"><use href="#i-anchor"/></svg> <span id="tide-stage">Your run sails on the next block.</span> Come back anytime; the result waits. <button class="linkbtn" id="refund-btn" type="button" hidden>Still waiting after two days? Cancel and refund</button></div>
           <button id="go-btn">Chart at least one tile</button>
+          <div id="last-line" aria-hidden="true"></div>
           <div class="hint" id="mode-hint">Tap the chart to plot your course — up to 10 tiles. Practice runs are seeded locally and sail at once.</div>
         </div>
       </div>
     </div>
-  </div>
+  </main>
+  <p id="sr" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
 
   <div class="card log-card">
-    <h2>The log <span class="right" id="log-count"></span></h2>
+    <h2>The log <span class="right"><span id="log-count"></span> <button class="linkbtn" id="stats-btn" type="button">Captain’s log</button></span></h2>
     <div id="log-empty" class="empty">No runs yet. Plot a course, set your stake, and brave the reef.</div>
-    <div class="log-scroll">
+    <div class="log-scroll" tabindex="0" role="region" aria-label="Run log">
     <table class="log" id="log" style="display:none">
       <thead><tr><th>Run</th><th>Course</th><th class="num">Stake</th><th>Outcome</th><th class="num">Net</th><th>Proof</th></tr></thead>
       <tbody></tbody>
@@ -264,7 +310,12 @@
   <footer>
     <details>
       <summary>Provably fair — how the tide decides</summary>
-      <p>In <b>Tide</b> mode your run names a Bitcoin (testnet4) block that does not exist yet.
+      <p>The tide is <b>Blake's testnet4</b> — the BLAKE2b hardfork of Bitcoin, which parted from
+      plain testnet4 at block <b>150,308</b> — followed by
+      <a href="https://mempool.guide/testnet4" target="_blank" rel="noopener">mempool.guide</a>. Runs
+      committed before Reef Run moved to Blake settle and verify against plain testnet4, the chain
+      they were committed to.</p>
+      <p>In <b>Tide</b> mode your run names a Blake testnet4 block that does not exist yet.
       When it is mined — and one more block confirms it — the reefs are placed by
       <code>sha256(blockHash | mark)</code>, your <i>mark</i> being a random nonce fixed when you
       committed your course. Nobody, not even this page, knows where the reefs lie before the
@@ -282,29 +333,102 @@
   </footer>
 </div>
 
+<div id="toasts" aria-hidden="true"></div>
+<dialog id="dlg-stats" aria-labelledby="stats-t"><h3 id="stats-t" tabindex="-1">Captain’s log</h3><div id="stats-body"></div><p><button class="btn" data-close>Close</button></p></dialog>
+<dialog id="dlg-daily" aria-labelledby="daily-t"><h3 id="daily-t" tabindex="-1">Today’s chart</h3><div id="daily-body"></div></dialog>
+<dialog id="dlg-wreck" aria-labelledby="wreck-t"><h3 id="wreck-t">Shipwrecked!</h3><p id="wreck-last"></p><p>The purse is empty. The Admiralty refits you with <b>1,000</b> doubloons — play money, so no harm done.</p><p><button class="btn" id="wreck-ok">Take the 1,000 and sail on</button></p></dialog>
 <script type="module">
-import { GRID, MAX_PICKS, quote, settle } from './reef.js';
+import { GRID, MAX_PICKS, REEF_OPTIONS, quote, settle } from './reef.js';
 
 /* ================================================================ state */
-const LS = { purse:'reef-purse', log:'reef-log', pending:'reef-pending', sound:'reef-sound', runs:'reef-runs' };
+const LS = { purse:'reef-purse-v2', log:'reef-log-v2', pending:'reef-pending-b4', adopted:'reef-pending-adopted', legacyPending:'reef-pending', sound:'reef-sound', runs:'reef-runs-v2' };
+// the ledger moved to versioned keys: the pre-move page (which may still be open
+// in another tab) only ever writes the old ones. Copy them over once.
+try {
+  if(localStorage.getItem('reef-migrated-at') == null){
+    localStorage.setItem('reef-migrated-at', String(Date.now()));   // first, so a full quota can't leave it unwritten
+    for(const [k2, k1, d] of [['reef-purse-v2','reef-purse','1000'], ['reef-log-v2','reef-log','[]'], ['reef-runs-v2','reef-runs','0']]) if(localStorage.getItem(k2) == null) localStorage.setItem(k2, localStorage.getItem(k1) ?? d);
+  }
+} catch {}
+const MIGRATED_AT = (() => { try { const r = localStorage.getItem('reef-migrated-at'); const v = Number(r); return r != null && Number.isSafeInteger(v) && v > 0 ? v : Date.now(); } catch { return Date.now(); } })();
 const $ = (id) => document.getElementById(id);
-const MEMPOOL = 'https://mempool.space/testnet4/api';
+// The tide is Blake's testnet4 (txbt4): the BLAKE2b hardfork of Bitcoin, which
+// parted from plain testnet4 at height 150308, served by mempool.guide. Which
+// chain is part of the proof: above the fork the same height names a different
+// block on plain testnet4. Runs committed before the move carry no chain stamp
+// and settle and verify on the chain they were committed to (mempool.space).
+const CHAIN = 'blake-testnet4';
+const FORK_HEIGHT = 150308;
+const EXPLORER = 'https://mempool.guide/testnet4';
+const LEGACY_EXPLORER = 'https://mempool.space/testnet4';
+const onBlake = (r) => r.chain === CHAIN || r.height < FORK_HEIGHT;
+const explorerFor = (r) => (onBlake(r) ? EXPLORER : LEGACY_EXPLORER);
+const MEMPOOL = EXPLORER + '/api';
 const MINUS = '−';
 const COLS = 5, TILE = 96, PAD = 90, TOP = 44; // grid centered: (660-480)/2
 
-let purse = load(LS.purse, 1000);
-let runNo = load(LS.runs, 0);
-let log = load(LS.log, []);
-let pending = load(LS.pending, null);  // {height, mark, reefs, picks, stake, placedAt}
+// Stored state is checked, not trusted: every tide-games page shares this
+// origin's storage, and a bad value must never brick the chart or run code.
+const isInt = (x) => Number.isSafeInteger(x);
+const isHex = (x, n) => typeof x === 'string' && x.length === n && /^[0-9a-f]+$/.test(x);
+const okPicks = (a) => Array.isArray(a) && a.length >= 1 && a.length <= MAX_PICKS && a.every((t) => isInt(t) && t >= 0 && t < GRID) && new Set(a).size === a.length;
+const okEntry = (r) => !!r && typeof r === 'object' && isInt(r.n) && r.n > 0 && r.n < 1e8 && okPicks(r.picks) && REEF_OPTIONS.includes(r.reefs)
+  && isInt(r.stake) && r.stake > 0 && typeof r.won === 'boolean' && Array.isArray(r.hits) && r.hits.every((t) => isInt(t) && t >= 0 && t < GRID) && (r.won || r.hits.length > 0)
+  && isInt(r.delta) && isInt(r.at) && (r.mode === 'practice' || (r.mode === 'tide' && isInt(r.height) && r.height > 0 && isHex(r.mark, 32) && isHex(r.blockHash, 64)));
+const okPending = (p) => !!p && typeof p === 'object' && isInt(p.height) && p.height > 0 && isHex(p.mark, 32) && REEF_OPTIONS.includes(p.reefs) && okPicks(p.picks) && isInt(p.stake) && p.stake > 0 && isInt(p.placedAt);
+let purse, runNo, log, pending, pendingKey = 'reef-pending-b4';   // pending: {height, mark, reefs, picks, stake, placedAt, chain}
+function readState(){
+  const pu = load(LS.purse, 1000); purse = isInt(pu) && pu >= 0 ? Math.min(pu, 1e12) : 1000;
+  const lg = load(LS.log, []); log = Array.isArray(lg) ? lg.filter(okEntry).slice(0, 60) : [];
+  const rn = load(LS.runs, 0); runNo = Math.max(isInt(rn) && rn >= 0 && rn < 1e8 ? rn : 0, ...log.map((r) => r.n));
+  // Blake commits live under their own key, which a tab still running the
+  // pre-move page never reads (it would settle them on the wrong chain). An
+  // old unstamped commit keeps its legacy key and settles where it was made.
+  let key = LS.pending, pe = load(LS.pending, null);
+  // a legacy commit is ours only if it was sealed before the ledger moved: a later one was
+  // staked from the old purse by a tab still running the old page, and stays that page's business
+  if(pe == null){ const ap = load(LS.adopted, null); if(ap != null){ key = LS.adopted; pe = ap; } }
+  if(pe == null){ const lp = load(LS.legacyPending, null);
+    if(lp != null && (lp.chain === CHAIN || (isInt(lp.placedAt) && lp.placedAt <= MIGRATED_AT))){
+      // move it (don't share it): the old page can then never settle it into its own ledger first
+      const to = lp.chain === CHAIN ? LS.pending : LS.adopted;
+      if(save(to, lp)){ save(LS.legacyPending, null); key = to; } else key = LS.legacyPending;
+      pe = lp;
+    } }
+  pendingKey = key;
+  if(pe == null || okPending(pe)) pending = pe;
+  else {   // a mangled commit: give a plain stake back rather than strand it
+    pending = null; save(key, null);
+    if(pe && typeof pe === 'object' && isInt(pe.stake) && pe.stake > 0 && pe.stake <= 1e6){ purse += pe.stake; save(LS.purse, purse); }
+  }
+}
+readState();
+// Locks serialise tabs, but localStorage reaches other tabs a moment later.
+// Every ledger write bumps a sequence number and announces it; the next lock
+// holder waits until its own storage shows that number before reading.
+const bc = 'BroadcastChannel' in window ? new BroadcastChannel('reef-ledger') : null;
+let seenSeq = 0;
+if(bc) bc.onmessage = (e) => { if(e.data && isInt(e.data.seq)) seenSeq = Math.max(seenSeq, e.data.seq); if(e.data && isHex(e.data.settled, 32)){ if(isInt(e.data.seq)) seenSeq = Math.max(seenSeq, e.data.seq); replaySettled(e.data.settled); } };
+const diskSeq = () => { let v = 0; try { v = Number(localStorage.getItem('reef-seq')); } catch {} return Number.isSafeInteger(v) && v >= 0 && v < 1e12 ? v : 0; };
+async function freshRead(){ for(let i = 0; i < 60 && diskSeq() < seenSeq; i++) await sleep(25); readState(); }
+function bumpSeq(){ if(!(seenSeq < 1e12)) seenSeq = 0; const n = Math.max(diskSeq(), seenSeq) + 1; seenSeq = n; try { localStorage.setItem('reef-seq', String(n)); } catch {} if(bc) bc.postMessage({ seq: n }); }
+const withLedger = (fn) => navigator.locks
+  ? navigator.locks.request('reef-ledger', async () => { await freshRead(); try { return await fn(); } finally { bumpSeq(); } })
+  : (readState(), fn());
+const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 let soundOn = load(LS.sound, true);
 let reefCount = 5;
 let picks = [];                        // charted course, in pick order
 let mode = 'practice';
 let running = false;
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+const srQ = []; let srBusy = false;
+function announce(t, now = false){ if(now) srQ.length = 0; t = String(t).replace(/<[^>]+>/g, '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/\s+/g, ' ').trim(); if(!t) return; srQ.push(t); if(!srBusy) srNext(); }
+function srNext(){ const t = srQ.shift(); if(t == null){ srBusy = false; return; } srBusy = true; const el = $('sr'); el.textContent = ''; setTimeout(() => { el.textContent = t; setTimeout(srNext, Math.min(1400, 400 + t.length * 18)); }, 60); }
 
 function load(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch{ return d; } }
-function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-const fmt = (n) => n.toLocaleString('en-US');
+function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch{ return false; } }
+const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US') : '—');
 const fmtDelta = (n) => (n >= 0 ? '+' : MINUS) + fmt(Math.abs(n));
 const sleep = (ms) => new Promise((r)=>setTimeout(r, ms));
 const tileName = (t) => 'ABCDE'[t % COLS] + (Math.floor(t / COLS) + 1);
@@ -387,14 +511,14 @@ let hoverTile = null;  // pointer hover: ghost pencil X
 let lastRun = null;    // {picks, won}: the previous route stays on the chart
 let fatalTile = null;  // the reef that actually sank the run (red ring)
 let flashT = 0;        // red vignette on a wreck
-const redFlash = () => { flashT = performance.now(); };
+const redFlash = () => { if(!RM.matches) flashT = performance.now(); };
 // the purse rolls, never teleports: drawChart eases shownPurse toward purse
 let shownPurse = purse;
 // faux soundings: stable per-tile depth numerals, pure decoration
 const SOUNDINGS = Array.from({length: GRID}, (_, i) => {
   const a = (i*2654435761 >>> 0);
-  return [{ n: 3 + a%15, dx: 18 + a%40, dy: 24 + (a>>3)%30 },
-          { n: 2 + (a>>5)%12, dx: 42 + (a>>7)%34, dy: 58 + (a>>9)%24 }];
+  return [{ n: 3 + a%15, dx: 18 + a%40, dy: 24 + (a>>>3)%30 },
+          { n: 2 + (a>>>5)%12, dx: 42 + (a>>>7)%34, dy: 58 + (a>>>9)%24 }];
 });
 
 /* The chart's color grammar (from the critics' consensus):
@@ -406,6 +530,7 @@ let lastFrame = performance.now();
 function drawChart(now){
   const t = now - t0, dt = Math.min(50, now - lastFrame); lastFrame = now;
   ctx.clearRect(0,0,W,H);
+  if(RM.matches) shake = 0;
   if(shake > 0.3){ ctx.save(); ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake); shake *= Math.pow(0.93, dt/16); }
   else { ctx.save(); shake = 0; }
 
@@ -449,11 +574,11 @@ function drawChart(now){
   ctx.restore(); ctx.textAlign='start';
   // cartouche, centered
   ctx.font='italic 15px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.65)'; ctx.textAlign='center';
-  ctx.fillText('Chart of the Reef Grounds — soundings unknown', W/2, H-28);
+  ctx.fillText('Chart of the Reef Grounds — old soundings, no clue to the reefs', W/2, H-28);
   // grid labels
-  ctx.font='600 12px Georgia,serif'; ctx.fillStyle='rgba(92,74,45,.75)';
+  ctx.font=`600 ${cv.clientWidth < 500 ? 22 : 13}px Georgia,serif`; ctx.fillStyle='rgba(92,74,45,.9)';
   for(let c2=0;c2<COLS;c2++) ctx.fillText('ABCDE'[c2], PAD+c2*TILE+TILE/2, TOP-10);
-  for(let r=0;r<COLS;r++) ctx.fillText(String(r+1), PAD-18, TOP+r*TILE+TILE/2+4);
+  for(let r=0;r<COLS;r++) ctx.fillText(String(r+1), PAD-(cv.clientWidth < 500 ? 24 : 18), TOP+r*TILE+TILE/2+(cv.clientWidth < 500 ? 8 : 4));
   ctx.textAlign='start';
 
   // the graticule: ruled cells, square corners — a chart, not chips
@@ -498,7 +623,7 @@ function drawChart(now){
       ctx.strokeRect(x+4+tu*6, y+4+tu*6, TILE-8-tu*12, TILE-8-tu*12);
     }
     const age = stampAt[i]!=null ? Math.min(1,(now-stampAt[i])/260) : 1;
-    const pop = (st || stampAt[i]!=null) ? (1 + 0.35*(1-easeOut(age))) : 1;
+    const pop = !RM.matches && (st || stampAt[i]!=null) ? (1 + 0.35*(1-easeOut(age))) : 1;
     if(st==='clear'){
       ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(pop,pop);
       ctx.strokeStyle=INKBLUE; ctx.lineWidth=3; ctx.lineCap='round';
@@ -509,7 +634,7 @@ function drawChart(now){
       // the wreck slams in oversized; only the FATAL reef wears the red ring —
       // other course reefs disclosed by the backfill draw at ghost weight
       const fatal = i === fatalTile;
-      const slam = 1 + (fatal ? 0.8 : 0.35)*(1-easeOut(age));
+      const slam = RM.matches ? 1 : 1 + (fatal ? 0.8 : 0.35)*(1-easeOut(age));
       ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.scale(slam,slam);
       if(!fatal) ctx.globalAlpha = 0.55;
       ctx.fillStyle='#3d3226';
@@ -524,7 +649,7 @@ function drawChart(now){
     // ghost reefs: post-run disclosure, win or lose — even on stamped-clear
     // tiles a ghost never draws (a reef tile is stamped 'reef', honestly)
     if(ghostReefs && ghostReefs.includes(i) && !st){
-      ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.globalAlpha=0.28;
+      ctx.save(); ctx.translate(x+TILE/2,y+TILE/2); ctx.globalAlpha=0.5;
       ctx.fillStyle='#3d3226';
       ctx.beginPath(); ctx.moveTo(-14,10); ctx.lineTo(-6,-8); ctx.lineTo(0,2);
       ctx.lineTo(6,-10); ctx.lineTo(12,10); ctx.closePath(); ctx.fill();
@@ -546,6 +671,12 @@ function drawChart(now){
       ctx.restore(); ctx.textAlign='start'; ctx.textBaseline='alphabetic';
     }
   }
+  // an empty chart says what to do
+  if(!picks.length && !lastRun && !running){
+    ctx.font = `italic ${cv.clientWidth < 500 ? 26 : 17}px Georgia,serif`; ctx.fillStyle = 'rgba(60,50,35,.8)'; ctx.textAlign = 'center';
+    ctx.fillText('Tap tiles to plot your course — up to 10', W/2, TOP + 2.5*TILE + 6);
+    ctx.textAlign = 'start';
+  }
   // the previous run's route stays on the chart until a new plan begins
   if(lastRun && !picks.length && !running){
     drawRoute(lastRun.picks, 'rgba(60,55,48,.35)');
@@ -563,10 +694,12 @@ function drawChart(now){
   }
   ctx.restore();
   // the purse ticks rather than teleporting
-  if(Math.abs(shownPurse-purse)>0.5){
-    shownPurse += (purse-shownPurse)*Math.min(1, dt/180);
+  const target = purse - (veil ? veil.gain : 0);
+  if(RM.matches) shownPurse = target;
+  if(Math.abs(shownPurse-target)>0.5){
+    shownPurse += (target-shownPurse)*Math.min(1, dt/180);
     $('purse').textContent = fmt(Math.round(shownPurse));
-  }
+  } else if(RM.matches) $('purse').textContent = fmt(Math.round(shownPurse));
   requestAnimationFrame(drawChart);
 }
 function drawRoute(route, style){
@@ -588,9 +721,11 @@ function drawConfetti(dt){
     ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s*0.35,p.s,p.s*0.7); ctx.restore();
   }
 }
-function celebrate(){
+function celebrate(mult = 3){
+  if(RM.matches) return;
+  const waves = mult >= 20 ? 5 : mult >= 5 ? 3 : 1;
   const cs=['#1e6f8e','#b8860b','#1e7d4f','#b0483f','#f4f2ea'];
-  for(let wave=0;wave<3;wave++) setTimeout(()=>{
+  for(let wave=0;wave<waves;wave++) setTimeout(()=>{
     for(let i=0;i<70;i++) confetti.push({
       x:Math.random()*W, y:-10-Math.random()*30,
       vx:(Math.random()-0.5)*0.12, vy:0.06+Math.random()*0.1,
@@ -598,25 +733,44 @@ function celebrate(){
       c:cs[i%cs.length],
     });
   }, wave*350);
-  shake = 5;
+  shake = mult >= 20 ? 9 : mult >= 5 ? 5 : 2;
 }
 requestAnimationFrame(drawChart);
 
 /* ================================================================ run flow */
-async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
-  running = true; renderSlip(); hideBanner();
+// The books: decided the moment the seed exists, settled in one step before
+// any theatre — a reload mid-reveal can never eat a stake. Callers hold the lock.
+let veil = null, milestones = null;   // while the reveal plays, the purse chip shows the pre-run number
+function bookRun({seedHex, picksIn, reefs, stake, tideInfo}){
   const out = settle({ picks: picksIn, reefs, stake, seedHex });
-  // Books settle the moment the seed exists; the reveal is theatre (a reload
-  // can never eat a stake).
-  purse += out.payout; save(LS.purse, purse);
-  runNo++; save(LS.runs, runNo);
-  log.unshift({
-    n: runNo, picks: picksIn, reefs, stake, won: out.won,
+  // the log is written first, then the purse; if either write fails the other
+  // is undone and nothing is booked (settlement is idempotent by mark, so a
+  // Tide run simply settles again once there is room)
+  const oldLog = log;
+  const entry = {
+    n: runNo + 1, picks: picksIn, reefs, stake, won: out.won,
     hits: out.hits, delta: out.delta, mode: tideInfo?'tide':'practice',
     height: tideInfo?.height ?? null, mark: tideInfo?.mark ?? null,
     blockHash: tideInfo?.blockHash ?? null, at: Date.now(),
-  });
-  log = log.slice(0,60); save(LS.log, log);
+    // which chain settled this run; unstamped entries are plain testnet4
+    chain: tideInfo?.chain,
+  };
+  const newLog = [entry, ...oldLog].slice(0, 60);
+  if(!save(LS.log, newLog)) throw new Error('storage full');
+  if(!save(LS.purse, Math.min(1e12, purse + out.payout))){ save(LS.log, oldLog); throw new Error('storage full'); }
+  log = newLog; purse = Math.min(1e12, purse + out.payout); runNo++; save(LS.runs, runNo);
+  veil = { gain: out.payout, n: runNo };
+  milestones = recordStats(out, picksIn, reefs, stake, tideInfo);
+  return out;
+}
+// the theatre may fail; the books never do — always unlock and lift the veil
+async function safeRun(args, out){ try { await runCourse(args, out); } catch(e) { console.error('[reef] reveal', e); } finally { veil = null; if(running){ running = false; } readState(); renderAll(); if(pending) watchTide(); } }
+async function runCourse({seedHex, picksIn, reefs, stake, tideInfo, daily}, out){
+  running = true; renderSlip(); hideBanner();
+  { const f = $('chart-frame').getBoundingClientRect(); if(f.top < 0 || f.bottom > innerHeight) $('chart-frame').scrollIntoView({ block: 'nearest', behavior: RM.matches ? 'auto' : 'smooth' }); }
+  if(!document.activeElement || document.activeElement === document.body || document.activeElement === $('go-btn')) $('tile-grid').focus({ preventScroll: true });
+  srQ.length = 0; clearTimeout(renderSlip.t);
+  announce(tideInfo ? `The tide has turned: block ${fmt(tideInfo.height)} places the reefs. Sounding your ${picksIn.length} tile course.` : `Sounding your ${picksIn.length} tile course among ${reefs} reefs.`);
 
   // The theatre: sail the course in PICK order — the numbered route is the
   // boat's journey, and the reveal follows it. The cadence escalates: quick
@@ -642,6 +796,7 @@ async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
     const hit = reefSet.has(tile);
     revealed[tile] = hit ? 'reef' : 'clear';
     stampAt[tile] = performance.now();
+    announce(`${tileName(tile)}: ${hit ? 'reef!' : 'clear'}`);
     if(hit){
       if(watched()){ crunch(); redFlash(); }
       shake = Math.max(shake, 13); sunk = true; wreckTile = tile; fatalTile = tile; break;
@@ -654,101 +809,180 @@ async function runCourse({seedHex, picksIn, reefs, stake, tideInfo}){
     if(revealed[tile]==null) revealed[tile] = reefSet.has(tile) ? 'reef' : 'clear';
   }
   await sleep(500);
+  veil = null;   // the reveal is done: the purse may count now
   if(watched()) fanfare(out.won);
-  if(out.won) celebrate();
+  const mult = out.won ? quote(reefs, picksIn.length, stake).multiplier : 0;
+  if(out.won) celebrate(mult);
   ghostReefs = out.reefTiles; // the chart owes you the reefs, win or lose
   lastRun = { picks: [...picksIn], won: out.won };
-  showBanner(
-    out.won ? 'Clean passage!' : `Wrecked on ${tileName(wreckTile)}`,
-    out.won ? `Every sounding came up clear — <b class="win">${fmtDelta(out.delta)}</b> doubloons`
-            : `The reef took your stake: <b class="lose">${fmtDelta(out.delta)}</b> doubloons`,
-    out.won,
-  );
+  // near misses: reefs lying right beside a winning course
+  const near = out.won ? out.reefTiles.filter((r) => picksIn.some((t) => Math.abs((t % COLS) - (r % COLS)) + Math.abs(Math.floor(t / COLS) - Math.floor(r / COLS)) === 1)).length : 0;
+  const head = tideInfo ? `The tide came in — block ${fmt(tideInfo.height)}` : out.won && ride ? `Ride ${ride.n} — still afloat!` : out.won ? (mult >= 20 ? 'Treasure run!' : mult >= 5 ? 'A daring passage!' : 'Clean passage!') : `Wrecked on ${tileName(wreckTile)}`;
+  const sub = daily ? (out.won ? `Every sounding came up clear — today’s score <b class="win">× ${mult.toFixed(2)}</b>` : 'Wrecked — no score today. A new chart at midnight UTC.') : out.won ? `Every sounding came up clear — <b class="win">${fmtDelta(out.delta)}</b> (${fmt(out.payout)} back at × ${mult.toFixed(2)})${near && !ride ? ` · ${near} reef${near > 1 ? 's' : ''} lay right beside your course` : ''}`
+                      : `${tideInfo ? `Wrecked on ${tileName(wreckTile)} — the reef took your stake:` : 'The reef took your stake:'} <b class="lose">${fmtDelta(out.delta)}</b>`;
+  const subT = tideInfo ? `${sub}. It’s verifiable — see verify ✓ in the log.` : sub;
+  const acts = [];
+  if(!daily && !tideInfo){
+    // a ride is one-off: when the chain ends, the stake goes back to where it started
+    if(ride){ ride.total += out.delta; }
+    if(ride && !out.won){ rideLost = ride; $('stake').value = Math.min(ride.base, Math.max(1, purse)); ride = null; renderSlip(); }
+    const base = stakeVal();
+    const odds = `${Math.round(quote(reefs, picksIn.length, stake).chance * 100)}%`;
+    if(out.won && out.payout <= purse && out.payout <= 99_999_999_999) acts.push([ride ? `Ride on: ${fmt(out.payout)} · ${odds}` : `Let it ride: ${fmt(out.payout)} · ${odds}`, () => { ride = ride ? { base: ride.base, n: ride.n + 1, total: ride.total } : { base: stake, n: 1, total: out.delta }; $('stake').value = out.payout; renderSlip(); riding = true; $('go-btn').click(); }]);
+    if(out.won && ride) acts.push([`Bank it`, () => { bankRide(ride); ride = null; renderSlip(); }, true]);
+    else if(purse >= 1 && base <= purse) acts.push([`Sail again: ${fmt(base)}`, () => { ride = null; $('go-btn').click(); }, true]);
+  }
+  if(rideLost){ const rl = rideLost; rideLost = null; const before = rl.total - out.delta;
+    showBanner('The ride’s over', `Wrecked on ${tileName(wreckTile)} on ride ${rl.n} — the reef took back <b class="win">${fmtDelta(before)}</b> of winnings, net <b class="${rl.total >= 0 ? 'win' : 'lose'}">${fmtDelta(rl.total)}</b>. Stake back to ${fmt(rl.base)}.`, false, acts, wreckTile);
+    $('last-line').innerHTML = `Last ride: ${rl.n} ride${rl.n > 1 ? 's' : ''}, net <b class="${rl.total >= 0 ? 'win' : 'lose'}">${fmtDelta(rl.total)}</b>. Stake back to ${fmt(rl.base)}.`; } else
+  showBanner(head, (tideInfo ? subT : sub) + (ride && !daily && !tideInfo ? ` · ride total <b class="${ride.total >= 0 ? 'win' : 'lose'}">${fmtDelta(ride.total)}</b>` : ''), out.won, acts, out.won ? null : wreckTile);
+  if(daily){ unlock('daily'); $('last-line').innerHTML = `Today’s chart: ${out.won ? `<b class="win">× ${mult.toFixed(2)}</b>` : '<b class="lose">wrecked</b>'}.`; setTimeout(showDaily, 1400); } else $('last-line').innerHTML = `Last run: ${head.replace(/!$/, '')} — ${out.won ? `<b class="win">${fmtDelta(out.delta)}</b>` : `<b class="lose">${fmtDelta(out.delta)}</b>`}. The course stays charted: run it again, or change it.`;
+  announce(`${head.replace(/[.!]$/, '')}. ${(tideInfo ? subT : sub).replace(/<[^>]+>/g, '').replace(/[.!]?\s*$/, '.')}${daily ? '' : ` Purse ${fmt(purse)}.`}`);
+  if(milestones){ const m = milestones; milestones = null; m(); }
   await sleep(600);
-  running = false;
-  picks = [];
-  renderAll();
+  running = false; veil = null;
+  $('banner-act').querySelectorAll('button').forEach((x) => { x.disabled = false; });
+  $('scrim').classList.remove('show');   // the reveal is over: undim the chart while the banner waits
+  const prim = $('banner-act').querySelector('button.go') || $('banner-act').querySelector('button');
+  if(prim){ announce(`Options: ${[...$('banner-act').querySelectorAll('button')].map((x) => x.textContent).join(', ')}.`); }
+  // the course stays charted: one tap sails it again
+  readState(); renderAll();
+  if(pending) setTimeout(()=>trySettleTide().catch(()=>{}), 500);
+  if(!document.activeElement || document.activeElement === document.body || document.activeElement === $('tile-grid')) { const prim = $('banner-act').querySelector('button.go') || $('banner-act').querySelector('button'); (prim || $('go-btn')).focus({ preventScroll: true }); }
+  if(!daily && purse < 1 && !pending) setTimeout(checkWreck, 900);
 }
+function bankRide(r){
+  $('stake').value = r.base;
+  const big = r.total >= 200;
+  if(!RM.matches && big) celebrate(Math.min(30, 2 + r.total / 100));
+  fanfare(true);
+  showBanner(`Banked ${fmtDelta(r.total)}!`, `${r.n} ride${r.n > 1 ? 's' : ''} survived — the winnings are yours. Stake back to ${fmt(r.base)}.`, true, [[`Sail again: ${fmt(r.base)}`, () => $('go-btn').click(), true]]);
+  $('banner-act').querySelectorAll('button').forEach((x) => { x.disabled = false; });
+  $('last-line').innerHTML = `Banked: ${r.n} ride${r.n > 1 ? 's' : ''}, <b class="win">${fmtDelta(r.total)}</b>. Stake back to ${fmt(r.base)}.`;
+  announce(`Banked ${fmtDelta(r.total)} after ${r.n} rides. Stake back to ${fmt(r.base)}.`, true);
+  const st = stats = loadStats(); st.bestBank = Math.max(st.bestBank || 0, r.total); st.longestRide = Math.max(st.longestRide || 0, r.n); save('reef-stats', st);
+  if(r.n >= 5) unlock('bank5'); if(r.total >= 1000) unlock('bank1000');
+}
+function checkWreck(){ if(purse >= 1 || pending || running || $('dlg-wreck').open) return; $('wreck-last').innerHTML = $('last-line').innerHTML.replace(/ The course stays charted.*$/, ''); $('dlg-wreck').showModal(); }
 
-function showBanner(head, subHTML, won){
+function showBanner(head, subHTML, won, actions = [], avoidTile = null){
+  { const rows = (lastRun ? lastRun.picks : picks).map((t) => Math.floor(t / COLS)), low = rows.filter((r) => r >= 3).length, high = rows.filter((r) => r <= 1).length;
+    $('banner').classList.toggle('top', avoidTile != null ? Math.floor(avoidTile / COLS) >= 3 : low > high); }
+  // then measure: if the banner still covers the tile that matters, flip it
+  requestAnimationFrame(() => { const t = avoidTile != null ? avoidTile : null; if(t == null) return; const tb = tileGrid.children[t]?.getBoundingClientRect(), bb = $('banner-inner').getBoundingClientRect();
+    if(tb && bb.width && !(bb.bottom < tb.top || bb.top > tb.bottom)) $('banner').classList.toggle('top'); });
+  $('banner-act').innerHTML = ''; actions.forEach(([label, fn, go]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if(go) b.className = 'go'; b.disabled = running; b.addEventListener('click', () => { if(running) return; hideBanner(); fn(); }); $('banner-act').appendChild(b); });
   $('banner-head').textContent = head;
   $('banner-sub').innerHTML = subHTML;
   $('banner-inner').className = 'inner ' + (won===true?'win':won===false?'lose':'');
-  $('banner').classList.add('show'); $('scrim').classList.add('show');
+  $('banner').classList.add('show'); $('scrim').classList.add('show'); document.body.classList.add('bn');
   clearTimeout(showBanner.t);
-  showBanner.t = setTimeout(hideBanner, 6000);
+  const small = innerWidth < 600 || innerHeight < 500, keep = actions.length || /tide came in/i.test(head);
+  const arm = () => { clearTimeout(showBanner.t); showBanner.t = setTimeout(() => { if($('banner-act').matches(':hover')) arm(); else hideBanner(); }, keep ? 600000 : small ? 3200 : 7000); };
+  arm();
 }
-function hideBanner(){ $('banner').classList.remove('show'); $('scrim').classList.remove('show'); }
+// the player set the banner aside: an unfinished ride ends, and its base stake comes back into view
+function dismissBanner(){ if(ride && !running){ $('stake').value = ride.base; ride = null; renderSlip(); } hideBanner(); }
+function hideBanner(){ if($('banner').contains(document.activeElement)) $('go-btn').focus({ preventScroll: true }); clearTimeout(showBanner.t); document.body.classList.remove('bn'); setTimeout(() => { if(!$('banner').classList.contains('show')) $('banner-act').innerHTML = ''; }, 350); $('banner').classList.remove('show'); $('scrim').classList.remove('show'); }
 
 /* ---------------- practice ---------------- */
-async function practiceRun(){
-  const st = stakeVal();
-  purse -= st; save(LS.purse, purse); renderHeader();
-  const seed = await sha256hex('practice|' + randHex(16));
-  await runCourse({ seedHex: seed, picksIn: [...picks], reefs: reefCount, stake: st });
-}
+
 
 /* ---------------- the tide (1-conf settle, reorg-aware verify) ---------------- */
-let tipHeight = null, tipAt = 0;
-async function fetchTip(){
+let tipHeight = null, tipAt = 0, pendingTip = null, settledNews = null, saveNagged = false;
+function fetchT(url, ms = 8000){ const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); return fetch(url, { signal: c.signal }).finally(() => clearTimeout(t)); }
+async function fetchTip(api = MEMPOOL){
+  if(api !== MEMPOOL){ const r = await fetchT(api + '/blocks/tip/height'); if(!r.ok) throw new Error('tip ' + r.status); const t = (await r.text()).trim(); if(!/^[0-9]{1,9}$/.test(t)) throw new Error('The chain answered oddly.'); return Number(t); }
   if(Date.now()-tipAt < 30_000 && tipHeight) return tipHeight;
-  const r = await fetch(MEMPOOL + '/blocks/tip/height');
+  const r = await fetchT(MEMPOOL + '/blocks/tip/height');
   if(!r.ok) throw new Error('tip ' + r.status);
-  tipHeight = Number(await r.text()); tipAt = Date.now();
+  const txt = (await r.text()).trim();
+  if(!/^[0-9]{1,9}$/.test(txt) || Number(txt) < 1) throw new Error('The chain answered oddly.');
+  tipHeight = Number(txt); tipAt = Date.now();
   $('tide-height').textContent = fmt(tipHeight);
   return tipHeight;
 }
 const blockHashCache = {};
-async function hashAtHeight(h, { cacheOk=false } = {}){
-  if(cacheOk && blockHashCache[h]) return blockHashCache[h];
-  const r = await fetch(MEMPOOL + '/block-height/' + h);
-  if(r.status===404) return null;
-  if(!r.ok) throw new Error('block ' + r.status);
-  const hash = (await r.text()).trim();
-  if(cacheOk) blockHashCache[h] = hash;
-  return hash;
+async function hashAtHeight(h, { cacheOk=false, api = MEMPOOL } = {}){
+  const key = api + ':' + h;
+  if(cacheOk && blockHashCache[key]) return blockHashCache[key];
+  const r = await fetchT(api + '/block-height/' + h);
+  // an unmined height isn't an error, and explorers say so differently:
+  // mempool.space answers 404, mempool.guide a 500 with a JSON complaint.
+  // Only 64 hex characters count as a hash; anything else means "not yet".
+  const body = r.ok ? (await r.text()).trim().toLowerCase() : '';
+  if(/^[0-9a-f]{64}$/.test(body)){ if(cacheOk) blockHashCache[key] = body; return body; }
+  if(r.status===404 || r.status>=500) return null;
+  throw new Error('block ' + r.status);
 }
-async function tideRun(){
-  const st = stakeVal();
-  const tip = await fetchTip();
-  const height = tip + 1;
-  const mark = randHex(16);
-  purse -= st; save(LS.purse, purse);
-  pending = { height, mark, reefs: reefCount, picks: [...picks], stake: st, placedAt: Date.now() };
-  save(LS.pending, pending);
-  renderAll();
-  showBanner('The course is committed', `Your run sails on block <b>${fmt(height)}</b> — the tide turns in about ten minutes.`);
-  watchTide();
-}
+
 let tideTimer = null;
 async function trySettleTide(){
-  if(!pending) return false;
-  tipAt = 0; const tip = await fetchTip();
+  if(!pending || running) return false;
+  // a run settles on the chain it was committed to
+  const api = explorerFor(pending) + '/api';
+  tipAt = 0; const tip = await fetchTip(api);
+  pendingTip = tip;
   if(tip < pending.height + 1) return false;      // one confirmation, always
-  const hash = await hashAtHeight(pending.height, { cacheOk:true });
+  const hash = await hashAtHeight(pending.height, { cacheOk:true, api });
   if(!hash) return false;
+  const mark = pending.mark, seed = await sha256hex(hash + '|' + mark);
+  let p = null, out = null, args = null;
+  await withLedger(async () => {
+    if(!pending || pending.mark !== mark || running || placing) return;   // another tab settled it, or this tab is busy
+    if(log.some((r) => r.mark === mark)){ pending = null; save(pendingKey, null); return; }   // already booked
+    p = pending;
+    args = { seedHex: seed, picksIn: p.picks, reefs: p.reefs, stake: p.stake, tideInfo: { height: p.height, mark: p.mark, blockHash: hash, chain: p.chain } };
+    try { out = bookRun(args); } catch { if(!saveNagged){ saveNagged = true; showBanner('Could not save', 'This browser’s storage is full — the tide result will be booked as soon as there is room.'); } return; }
+    pending = null; save(pendingKey, null);
+    settledNews = mark;   // announced after the lock's sequence bump
+  });
+  if(settledNews && bc){ bc.postMessage({ settled: settledNews, seq: seenSeq }); settledNews = null; }
+  if(!out) return false;
   if(tideTimer){ clearInterval(tideTimer); tideTimer = null; }
-  const p = pending; pending = null; save(LS.pending, null);
-  const seed = await sha256hex(hash + '|' + p.mark);
+  // the tide's course takes the chart (and the Tide tab) for its reveal
+  if(reefBeforeDaily != null){ reefCount = reefBeforeDaily; reefBeforeDaily = null; }
+  mode = 'tide'; save('reef-mode', mode); $('mode').querySelectorAll('button').forEach((x) => { x.classList.toggle('on', x.dataset.mode === 'tide'); x.setAttribute('aria-pressed', String(x.dataset.mode === 'tide')); });
   picks = [...p.picks]; reefCount = p.reefs; renderReefSeg();
-  await runCourse({ seedHex: seed, picksIn: p.picks, reefs: p.reefs, stake: p.stake,
-    tideInfo: { height: p.height, mark: p.mark, blockHash: hash } });
+  await safeRun(args, out);
   return true;
 }
+// another tab settled a Tide run: if this tab is showing the Tide, replay it
+// from the log — the seed is public (sha256(blockHash|mark)), nothing is booked
+async function replaySettled(mark){
+  if(running || placing || mode !== 'tide') return;
+  for(let i = 0; i < 40 && diskSeq() < seenSeq; i++) await sleep(25);
+  readState();
+  const r = log.find((x) => x.mark === mark); if(!r || r.mode !== 'tide') return;
+  const seed = await sha256hex(r.blockHash + '|' + r.mark);
+  const out = settle({ picks: r.picks, reefs: r.reefs, stake: r.stake, seedHex: seed });
+  picks = [...r.picks]; reefCount = r.reefs; renderReefSeg();
+  veil = { gain: out.payout, n: r.n };
+  await safeRun({ seedHex: seed, picksIn: r.picks, reefs: r.reefs, stake: r.stake, tideInfo: { height: r.height, mark: r.mark, blockHash: r.blockHash, chain: r.chain } }, out);
+}
+let settler = !navigator.locks;   // without locks, every tab may settle (idempotency still guards)
+// one tab settles; the others queue for the role and take it when that tab closes
+if(navigator.locks) navigator.locks.request('reef-tide-settler', () => { settler = true; if(tideTimer){ clearInterval(tideTimer); tideTimer = null; } readState(); if(pending) watchTide();
+  setInterval(() => { if(running || placing) return; readState(); if(pending && !tideTimer) watchTide(); }, 15_000);   // a standing watch
+  return new Promise(() => {}); });
 function watchTide(){
   if(tideTimer || !pending) return;
-  tideTimer = setInterval(()=>{ trySettleTide().catch(()=>{}); }, 30_000);
+  if(!settler){ tideTimer = setInterval(() => { readState(); if(!pending){ clearInterval(tideTimer); tideTimer = null; renderAll(); return; } fetchTip(explorerFor(pending) + '/api').then((t) => { pendingTip = t; renderSlip(); }).catch(() => {}); }, 30_000); return; }
+  tideTimer = setInterval(()=>{ trySettleTide().catch(()=>{}); fetchTip().then(renderSlip).catch(()=>{}); }, 30_000);
   trySettleTide().catch(()=>{});
 }
 
 /* ================================================================ UI */
 function stakeVal(){
-  const v = Math.floor(Number($('stake').value));
-  return Number.isFinite(v)&&v>0 ? v : 0;
+  const raw = $('stake').value.trim();
+  if(!/^[0-9]{1,11}$/.test(raw)) return 0;
+  const v = Number(raw);
+  return Number.isSafeInteger(v) && v > 0 ? v : 0;
 }
 function renderHeader(){
   // the purse text is owned by drawChart's tween — never snap it here
   $('sound-ic').innerHTML = `<use href="#i-${soundOn?'sound':'mute'}"/>`;
+  $('sound-btn').setAttribute('aria-pressed', String(soundOn));
 }
 function renderReefSeg(){
   $('reefs').querySelectorAll('button').forEach((b)=>{
@@ -760,14 +994,17 @@ function renderReefSeg(){
     b.setAttribute('aria-pressed', String(b.classList.contains('on'))));
 }
 function renderSlip(){
+  if(!placing){ allInOk = false; $('go-btn').classList.remove('arm'); }
+  if(typeof refreshDailyReefs === 'function') refreshDailyReefs();
   const st = stakeVal(), k = picks.length;
-  $('run-no').textContent = 'run ' + fmt(runNo+1);
+  $('run-no').textContent = mode === 'daily' ? 'daily chart' : 'run ' + fmt(runNo+1);
+  document.querySelector('#f-ret').previousElementSibling.textContent = mode==='daily' ? 'Reefs today' : 'Pays back';
   $('f-course').textContent = k ? `${k} tile${k>1?'s':''}` : '—';
   if(k){
-    const q = quote(reefCount, k, Math.max(1, st||1));
+    const q = quote(mode==='daily' ? DAILY_REEFS : reefCount, k, Math.max(1, mode==='daily' ? DAILY_STAKE : (st||1)));
     $('f-chance').textContent = (q.chance*100).toFixed(q.chance<0.1?1:0) + '%';
     $('f-mult').textContent = '× ' + q.multiplier.toFixed(2);
-    $('f-ret').innerHTML = st>0 ? fmt(q.payout) + ' <svg class="ic"><use href="#i-coin"/></svg>' : '—';
+    if(mode==='daily'){ $('f-ret').textContent = String(DAILY_REEFS); } else $('f-ret').innerHTML = st>0 ? `${fmt(q.payout)} <svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg> <small style="font-weight:600;color:#55626d">(${fmtDelta(q.payout - st)})</small>` : '—';
   } else {
     $('f-chance').textContent = '—'; $('f-mult').textContent = '—'; $('f-ret').textContent = '—';
   }
@@ -777,19 +1014,40 @@ function renderSlip(){
   });
   const btn = $('go-btn');
   const tideBlocked = mode==='tide' && !!pending;
-  btn.disabled = running || tideBlocked || !k || st<=0 || st>purse;
+  const dd = mode==='daily' ? dailyDone() : null;
+  const tooSmall = mode!=='daily' && k > 0 && st > 0 && quote(reefCount, k, st).payout <= st;
+  const capFull = mode!=='daily' && k > 0 && st > 0 && st <= purse && purse - st + quote(reefCount, k, st).payout > 1e12;
+  document.querySelector('.slip').classList.toggle('daily', mode==='daily');
+  $('rand-btn').disabled = $('clear-btn').disabled = running || tideBlocked || (mode==='daily' && !!dd);
+  const off = mode==='daily' ? (running || placing || (!dd && !k)) : (running || placing || tideBlocked || !k || st<=0 || st>purse || tooSmall || capFull);
+  btn.setAttribute('aria-disabled', String(off)); btn.disabled = false;
+  $('stake').setAttribute('aria-invalid', String(mode!=='daily' && (st<=0 || st>purse)));
   btn.textContent =
     running ? 'Running the reef…' :
     tideBlocked ? 'Waiting on the tide…' :
+    placing ? 'Sealing…' :
+    dd ? 'Today’s chart is sailed — see your result' :
     !k ? 'Chart at least one tile' :
+    mode==='daily' ? 'Sail today’s chart' :
+    st<=0 ? 'Enter a whole-number stake' :
+    tooSmall ? 'Stake too small to win anything — raise it' :
+    capFull ? 'The purse is full — a win couldn’t be paid; lower the stake' :
     st>purse ? 'Not enough doubloons' :
     mode==='tide' ? 'Commit course to the next block' : 'Run the reef';
   $('tide-note').style.display = pending ? 'block' : 'none';
-  if(pending) $('tide-block').textContent = fmt(pending.height);
-  $('mode-hint').textContent = mode==='tide'
-    ? 'Your course and mark are fixed now; the next testnet4 block places the reefs. Verifiable by anyone, forever.'
-    : 'Tap the chart to plot your course — up to 10 tiles. Practice runs are seeded locally and sail at once.';
+  $('refund-btn').hidden = !(pending && mode === 'tide' && Date.now() - pending.placedAt > 48 * 3600e3);
+  if(pending){ const tipH = pendingTip ?? (onBlake(pending) ? tipHeight : null); $('tide-stage').innerHTML = tipH == null ? `Waiting for block <b>${fmt(pending.height)}</b> to be mined (about 20 minutes in all).` : tipH < pending.height ? `Waiting for block <b>${fmt(pending.height)}</b> to be mined (about 20 minutes in all).` : `Block <b>${fmt(pending.height)}</b> is in — one more to confirm (about 10 minutes).`; }
+  $('tide-note').style.display = pending && mode==='tide' ? 'block' : 'none';
+  $('mode-hint').textContent = mode==='daily'
+    ? (dd ? `Today’s chart is sailed. A new one arrives in ${untilMidnight()}.` : `One chart a day, the same for everyone — today ${DAILY_REEFS} reefs. One course, no stake — your score is the × your course survives. Longer courses score higher but sink more often.`)
+    : mode==='tide'
+    ? (pending ? 'Your course is sealed. Practice while you wait — the result will sail here on its own.'
+               : 'Committing seals your course to the next block on a public test chain — about 20 minutes. Nobody, not even this page, can know where the reefs lie before it is mined. Play money only.')
+    : 'Pick up to 10 tiles — anywhere; only the tiles you mark count, and the line is just your sailing order. Reefs are placed at random, so no tile is safer than another: more tiles and more reefs simply pay more.';
   syncOverlay();
+  // one quiet summary after the plan changes (not on every repaint)
+  const sum = k ? `${k} tile${k>1?'s':''}, ${$('f-chance').textContent} clear, pays ${$('f-mult').textContent.replace('×','times')}` : '';
+  if(sum !== renderSlip.last && !running && !(mode === 'tide' && pending) && !(mode === 'tide' && lastRun)){ renderSlip.last = sum; clearTimeout(renderSlip.t); if(sum) renderSlip.t = setTimeout(() => announce(sum), 700); }
 }
 function ago(ts){
   const s = Math.max(0,(Date.now()-ts)/1000);
@@ -800,18 +1058,20 @@ function ago(ts){
 }
 function renderLog(){
   $('log-count').textContent = log.length ? `${log.length} run${log.length>1?'s':''}` : '';
-  $('log-empty').style.display = log.length ? 'none':'block';
-  $('log').style.display = log.length ? 'table':'none';
+  $('log-empty').style.display = log.length || pending ? 'none':'block';
+  $('log').style.display = log.length || pending ? 'table':'none';
   const tb = $('log').querySelector('tbody'); tb.innerHTML='';
+  if(pending){ const tr = document.createElement('tr'); tr.innerHTML = `<td>⏳ <span class="tag tide">tide</span><br><span class="when">sealed ${ago(pending.placedAt)}</span></td><td><span class="course-str">${pending.picks.map(tileName).join(' → ')}</span> <span class="tag">${esc(pending.reefs)}&nbsp;reefs</span></td><td class="num">${fmt(pending.stake)}</td><td>waiting for block ${fmt(pending.height)}</td><td class="num">…</td><td></td>`; tb.appendChild(tr); }
   for(const r of log){
+    if(veil && r.n === veil.n) continue;   // not before the reveal
     const tr = document.createElement('tr');
     const proof = r.mode==='tide'
-      ? `<a class="verify-link" href="https://mempool.space/testnet4/block/${r.blockHash}" target="_blank" rel="noopener">block ${fmt(r.height)}</a>
-         · <a href="#" class="verify-link" data-verify="${r.n}">verify ✓</a>`
+      ? `<a class="verify-link" href="${explorerFor(r)}/block/${esc(r.blockHash)}" target="_blank" rel="noopener">block ${fmt(r.height)}</a>
+         · <a href="#" class="verify-link" data-verify="${esc(r.n)}">verify ✓</a>`
       : `<span class="tag">practice</span>`;
     tr.innerHTML = `
-      <td>#${r.n} ${r.mode==='tide'?'<span class="tag tide">tide</span>':''}<br><span class="when" title="${new Date(r.at).toLocaleString()}">${ago(r.at)}</span></td>
-      <td><span class="course-str">${r.picks.map(tileName).join(' → ')}</span> <span class="tag">${r.reefs}&nbsp;reefs</span></td>
+      <td>#${esc(r.n)} ${r.mode==='tide'?'<span class="tag tide">tide</span>':''}<br><span class="when" title="${new Date(r.at).toLocaleString()}">${ago(r.at)}</span></td>
+      <td><span class="course-str">${r.picks.map(tileName).join(' → ')}</span> <span class="tag">${esc(r.reefs)}&nbsp;reefs</span></td>
       <td class="num">${fmt(r.stake)}</td>
       <td>${r.won ? 'clean passage' : 'wrecked on ' + tileName(r.hits[0])}</td>
       <td class="num ${r.delta>=0?'delta-win':'delta-lose'}">${fmtDelta(r.delta)}</td>
@@ -820,11 +1080,12 @@ function renderLog(){
   }
   tb.querySelectorAll('[data-verify]').forEach((a)=> a.addEventListener('click', async (e)=>{
     e.preventDefault();
-    const r = log.find((x)=>String(x.n)===a.dataset.verify);
+    const r = log.find((x)=>String(x.n)===a.dataset.verify); if(!r) return;
+    try {
     let canonical = null;
-    try{ canonical = await hashAtHeight(r.height); }catch{}
+    try{ canonical = await hashAtHeight(r.height, { api: explorerFor(r) + '/api' }); }catch{}
     if(canonical && canonical !== r.blockHash){
-      a.textContent = 'block reorged ⚠'; a.style.color = 'var(--gold)';
+      a.textContent = 'block reorged ⚠'; a.style.color = '#8a6508';
       a.title = 'testnet4 reorged: the block this run settled on is no longer canonical.';
       return;
     }
@@ -834,20 +1095,23 @@ function renderLog(){
     a.textContent = okV ? 'verified ✓' : 'MISMATCH ✗';
     a.style.color = okV ? 'var(--win)' : 'var(--lose)';
     a.title = `sha256(block|mark) places reefs at ${v.reefTiles.map(tileName).join(', ')}`;
+    if(okV && !canonical){ a.textContent = 'maths ✓ · chain unreachable'; a.style.color = '#8a6508'; a.title += ' — the chain could not be asked just now, so the block itself is unchecked.'; }
+    } catch(err) { a.textContent = 'could not verify'; a.style.color = 'var(--lose)'; }
   }));
 }
 function renderAll(){ renderHeader(); renderReefSeg(); renderSlip(); renderLog(); }
 
 /* ---------------- events ---------------- */
+const courseLocked = () => running || (mode === 'tide' && !!pending) || (mode === 'daily' && !!dailyDone());
 function toggleTile(tile){
-  if(running || pending) return;
+  if(courseLocked()){ if(mode === 'daily' && dailyDone()) announce('Today’s chart is sailed — a new one at midnight UTC.', true); else if(mode === 'tide' && pending) announce('This course is sealed until the tide comes in.', true); return; }
   const at = picks.indexOf(tile);
   if(at>=0){ picks.splice(at,1); blip(880); }
   else if(picks.length<MAX_PICKS){ picks.push(tile); stampAt[tile]=performance.now(); blip(); }
-  else { blip(300,0.05); shake = Math.max(shake, 3); return; }
+  else { blip(300,0.05); shake = Math.max(shake, 3); $('last-line').textContent = `${MAX_PICKS} tiles is the most a course can take.`; announce(`${MAX_PICKS} tiles is the most a course can take.`, true); return; }
   // a new plan clears the last run's story from the chart — and its banner
   revealed = {}; ghostReefs = null; lastRun = null; fatalTile = null;
-  hideBanner();
+  dismissBanner();
   renderSlip();
 }
 // The DOM overlay grid carries all input: clicks, hover, keyboard and screen
@@ -858,28 +1122,50 @@ for(let i=0;i<GRID;i++){
   b.type = 'button';
   b.setAttribute('aria-label', 'tile ' + tileName(i));
   b.setAttribute('aria-pressed', 'false');
+  b.tabIndex = i === 0 ? 0 : -1;
   b.addEventListener('click', ()=>toggleTile(i));
   b.addEventListener('pointerenter', ()=>{ hoverTile = i; });
+  b.addEventListener('focus', ()=>{ hoverTile = i; [...tileGrid.children].forEach((x, j) => { x.tabIndex = j === i ? 0 : -1; }); });
+  b.addEventListener('blur', ()=>{ if(hoverTile === i) hoverTile = null; });
+  // arrows move across the chart; one tab stop for all 25 tiles
+  b.addEventListener('keydown', (e)=>{
+    const r = Math.floor(i / COLS), c = i % COLS;
+    const to = { ArrowLeft: c > 0 ? i - 1 : i, ArrowRight: c < COLS - 1 ? i + 1 : i, ArrowUp: r > 0 ? i - COLS : i, ArrowDown: r < COLS - 1 ? i + COLS : i, Home: r * COLS, End: r * COLS + COLS - 1 }[e.key];
+    if(to == null) return;
+    e.preventDefault(); tileGrid.children[to].focus();
+  });
   tileGrid.appendChild(b);
 }
 tileGrid.addEventListener('pointerleave', ()=>{ hoverTile = null; });
 function syncOverlay(){
-  const locked = running || !!pending;
+  const locked = courseLocked();
+  const ghost = new Set(ghostReefs || []);
   [...tileGrid.children].forEach((b,i)=>{
     b.setAttribute('aria-pressed', String(picks.includes(i)));
+    // each tile says what the chart shows: planned stop, sounded clear, reef
+    const stop = picks.indexOf(i), st = revealed[i];
+    b.setAttribute('aria-label', `tile ${tileName(i)}${stop >= 0 ? `, stop ${stop + 1} of your course` : ''}${st === 'reef' ? (i === fatalTile ? ', reef — wrecked here' : ', reef') : st === 'clear' ? ', clear water' : ghost.has(i) ? ', reef (off your course)' : ''}`);
     // aria-disabled, not disabled: the lock must not eject keyboard focus
     b.setAttribute('aria-disabled', String(locked));
   });
   $('chart-frame').classList.toggle('locked', locked);
   document.querySelector('.slip').classList.toggle('locked', locked);
+  $('reefs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-disabled', String(locked || mode === 'daily')));
 }
 $('reefs').addEventListener('click',(e)=>{
-  const b=e.target.closest('button'); if(!b || pending) return;
+  const b=e.target.closest('button'); if(!b || courseLocked() || mode === 'daily') return;
   reefCount = Number(b.dataset.r); blip(); renderReefSeg(); renderSlip();
 });
 $('mode').addEventListener('click',(e)=>{
   const b=e.target.closest('button'); if(!b) return;
-  mode=b.dataset.mode; blip();
+  if(running || placing) return;
+  $('last-line').textContent = '';
+  mode=b.dataset.mode; blip(); save('reef-mode', mode);
+  if(mode==='daily'){ reefBeforeDaily ??= reefCount; reefCount = DAILY_REEFS; const d = dailyDone(); picks = d ? [...d.picks] : []; renderReefSeg(); if(d) setTimeout(() => paintDaily(d), 0); }
+  else if(reefBeforeDaily != null){ reefCount = reefBeforeDaily; reefBeforeDaily = null; renderReefSeg(); }
+  if(mode==='tide' && pending){ picks = [...pending.picks]; reefCount = pending.reefs; renderReefSeg(); }
+  else if(mode==='practice' && pending && picks.join() === pending.picks.join()){ picks = []; }
+  revealed = {}; ghostReefs = null; lastRun = null; fatalTile = null; hideBanner();
   $('mode').querySelectorAll('button').forEach((x)=>{
     x.classList.toggle('on',x===b);
     x.setAttribute('aria-pressed', String(x===b));
@@ -887,24 +1173,229 @@ $('mode').addEventListener('click',(e)=>{
   if(mode==='tide') fetchTip().catch(()=>{});
   renderSlip();
 });
-$('stake').addEventListener('input', renderSlip);
+$('rand-btn').addEventListener('click', () => {
+  if(courseLocked()) return;
+  const k = picks.length || 3, pool = Array.from({ length: GRID }, (_, i) => i);
+  for(let i = pool.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  picks = pool.slice(0, k); revealed = {}; ghostReefs = null; lastRun = null; fatalTile = null; hideBanner();
+  picks.forEach((t) => { stampAt[t] = performance.now(); }); blip(); renderSlip();
+  announce(`Random course: ${picks.map(tileName).join(', ')}.`, true);
+});
+$('clear-btn').addEventListener('click', () => { if(courseLocked()) return; $('last-line').textContent = ''; picks = []; revealed = {}; ghostReefs = null; lastRun = null; fatalTile = null; hideBanner(); blip(880); renderSlip(); });
+$('wreck-ok').addEventListener('click', () => { if(purse < 1){ purse += 1000; save(LS.purse, purse); $('stake').value = 50; picks = []; revealed = {}; ghostReefs = null; lastRun = null; fatalTile = null; ride = null; $('last-line').textContent = 'Refitted with 1,000 — stake reset to 50 and the chart cleared. Shorter courses and fewer reefs win more often.'; stats = loadStats(); stats.shipwrecks++; save('reef-stats', stats); } $('dlg-wreck').close(); renderAll(); (picks.length ? $('go-btn') : tileGrid.querySelector('[tabindex="0"]')).focus(); });
+$('dlg-wreck').addEventListener('cancel', (e) => e.preventDefault());
+$('stake').addEventListener('input', () => { ride = null; renderSlip(); });
+$('refund-btn').addEventListener('click', async () => {
+  // only a block the chain says is still unmined can be refunded; a mined one settles
+  let verdict = 'unreachable';
+  try {
+    const api = explorerFor(pending) + '/api'; tipAt = 0; const tip = await fetchTip(api);
+    verdict = tip >= pending.height ? 'mined' : 'unmined';
+  } catch {}
+  if(verdict === 'mined'){ watchTide(); trySettleTide().catch(() => {}); announce('That block is mined — the run settles instead.', true); return; }
+  if(verdict !== 'unmined'){ showBanner('Can’t check the chain', 'A refund needs the chain to confirm the block still isn’t mined. Try again when the explorer answers.'); return; }
+  let done = false;
+  await withLedger(async () => {
+    if(!pending || Date.now() - pending.placedAt <= 48 * 3600e3) return;
+    if(!save(LS.purse, Math.min(1e12, purse + pending.stake))) return;
+    purse += pending.stake; save(pendingKey, null); pending = null; done = true;
+  });
+  renderAll(); if(done) announce('The stuck Tide run was cancelled and its stake refunded.', true);
+});
+$('banner-inner').addEventListener('click', (e) => { if(!e.target.closest('button')) dismissBanner(); });
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && $('banner').classList.contains('show') && !document.querySelector('dialog[open]')) dismissBanner(); });
+$('stake').addEventListener('change', () => { const v = stakeVal(); if(v > 0 && String(v) !== $('stake').value) $('stake').value = v; renderSlip(); });
 $('quick').addEventListener('click',(e)=>{
   const b=e.target.closest('button'); if(!b) return;
-  $('stake').value = b.dataset.q==='max' ? Math.max(1,purse) : b.dataset.q;
+  ride = null;
+  $('stake').value = b.dataset.q==='max' ? Math.max(1, Math.min(purse, 99_999_999_999)) : b.dataset.q;
   blip(); renderSlip();
 });
+const freshStats = () => ({ runs:0, wins:0, net:0, bestMult:0, bestPay:0, bestWin:0, bestBank:0, longestRide:0, streak:0, bestStreak:0, shipwrecks:0, tideRuns:0, byReefs:{ 3:[0,0], 5:[0,0], 7:[0,0] } });
+function loadStats(){
+  const v = load('reef-stats', null), f = freshStats(); if(!v || typeof v !== 'object' || Array.isArray(v)) return f;
+  for(const k of Object.keys(f)) if(k === 'byReefs' ? !(v.byReefs && [3,5,7].every((r) => Array.isArray(v.byReefs[r]) && v.byReefs[r].length === 2 && v.byReefs[r].every((x) => isInt(x) && x >= 0))) : !(isInt(v[k]) && (k === 'net' || k === 'streak' || v[k] >= 0))) v[k] = f[k];
+  return v;
+}
+let stats = loadStats();
+let ach = (() => { const v = load('reef-ach', {}); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; })();
+const ACH = [
+  ['first','⛵','First passage','Come through a course clean.'], ['five','🧭','Five soundings','Clear a 5-tile course.'],
+  ['ten','🗺️','The long way round','Clear a 10-tile course.'], ['seven','🪸','Among the coral','Clear a course through 7 reefs.'],
+  ['treasure','💰','Treasure run','Win at × 10 or more.'], ['legend','🏴‍☠️','Legend of the reef','Win at × 50 or more.'],
+  ['streak3','🎯','Steady hand','Three clean passages in a row.'], ['tide','⚓','Rode the tide','Settle a Tide run.'], ['bank5','🎢','Nerve of steel','Bank a ride of 5 or more.'], ['bank1000','🏦','Banked a fortune','Bank +1,000 from one ride.'],
+  ['tidewin','🌊','Tide-borne','Win a Tide run.'], ['fifty','🧂','Old salt','Sail 50 runs.'],
+  ['daily','📅','Chart of the day','Sail a Daily chart.'], ['streak5','🎖️','Sure keel','Five clean passages in a row.'], ['streak8','👑','Charmed voyage','Eight clean passages in a row.'],
+  ['ten-runs','🪝','Deckhand','Sail 10 runs.'], ['hundred','🐋','Master mariner','Sail 100 runs.'], ['seven5','🐚','Coral threader','Clear 5 tiles through 7 reefs.'], ['refit','🛟','Refitted','Come back from a shipwreck to 2,000.'],
+];
+function toast(html){ if(document.querySelector('dialog[open]')){ setTimeout(() => toast(html), 800); return; } const el = document.createElement('div'); el.className = 'toast'; el.innerHTML = html; $('toasts').appendChild(el); setTimeout(() => el.remove(), 3800); }
+function unlock(id){
+  if(ach[id]) return; ach[id] = Date.now(); save('reef-ach', ach);
+  const a = ACH.find((x) => x[0] === id); if(!a) return;
+  const got = ACH.filter((x) => ach[x[0]]).length; unlock.q = (unlock.q || 0) + 1; const slot = unlock.q;
+  setTimeout(() => { unlock.q = Math.max(0, unlock.q - 1); toast(`<span aria-hidden="true">${a[1]}</span> <b>${esc(a[2])}</b> — ${esc(a[3])} <span style="opacity:.7">(${got} of ${ACH.length})</span>`); stampThud(1.6); announce(`Milestone: ${a[2]}. ${a[3]}`); }, 1500 + (slot - 1) * 1200);
+}
+function recordStats(out, picksIn, reefs, stake, tideInfo){
+  const st = stats = loadStats();
+  const mult = out.won ? quote(reefs, picksIn.length, stake).multiplier : 0;
+  st.runs++; st.net += out.delta; st.byReefs[reefs][1]++; if(tideInfo) st.tideRuns++;
+  if(out.won){ st.wins++; st.byReefs[reefs][0]++; st.streak = Math.max(1, st.streak + 1); st.bestPay = Math.max(st.bestPay, out.payout); st.bestWin = Math.max(st.bestWin, out.delta); st.bestMult = Math.max(st.bestMult, Math.round(mult * 100)); }
+  else st.streak = Math.min(-1, st.streak - 1);
+  st.bestStreak = Math.max(st.bestStreak, st.streak);
+  save('reef-stats', st);
+  return () => {   // milestones speak after the reveal
+    if(out.won) unlock('first');
+    if(out.won && picksIn.length >= 5) unlock('five');
+    if(out.won && picksIn.length >= 10) unlock('ten');
+    if(out.won && reefs === 7) unlock('seven');
+    if(out.won && mult >= 10) unlock('treasure');
+    if(out.won && mult >= 50) unlock('legend');
+    if(st.streak >= 3) unlock('streak3'); if(st.streak >= 5) unlock('streak5'); if(st.streak >= 8) unlock('streak8');
+    if(st.runs >= 10) unlock('ten-runs'); if(st.runs >= 100) unlock('hundred');
+    if(out.won && reefs === 7 && picksIn.length >= 5) unlock('seven5');
+    if(tideInfo){ unlock('tide'); if(out.won) unlock('tidewin'); }
+    if(st.runs >= 50) unlock('fifty');
+    if(st.shipwrecks && purse >= 2000) unlock('refit');
+  };
+}
+function renderStats(){
+  const st = stats = loadStats(), got = ACH.filter((a) => ach[a[0]]).length;
+  const rate = (r) => { const [w, n] = st.byReefs[r]; return n ? `${w} of ${n}` : '—'; };
+  $('stats-body').innerHTML = `<div class="stats">
+      <div class="stat"><small>Runs</small><b>${fmt(st.runs)}</b></div><div class="stat"><small>Clean</small><b>${fmt(st.wins)}</b></div>
+      <div class="stat"><small>Net</small><b class="${st.net > 0 ? 'delta-win' : st.net < 0 ? 'delta-lose' : ''}">${st.net ? fmtDelta(st.net) : '0'}</b></div>
+      <div class="stat"><small>Best ×</small><b>${st.bestMult ? (st.bestMult / 100).toFixed(2) : '—'}</b></div>
+      <div class="stat"><small>Best win</small><b>${st.bestWin ? fmtDelta(st.bestWin) : '—'}</b></div><div class="stat"><small>Best streak</small><b>${fmt(st.bestStreak)}</b></div>
+      <div class="stat"><small>Best bank</small><b>${st.bestBank ? fmtDelta(st.bestBank) : '—'}</b></div><div class="stat"><small>Longest ride</small><b>${st.longestRide || '—'}</b></div>
+      <div class="stat"><small>Tide runs</small><b>${fmt(st.tideRuns)}</b></div><div class="stat"><small>Shipwrecks</small><b>${fmt(st.shipwrecks)}</b></div>
+    </div>
+    <p class="hint">Clean passages by reef count — 3 reefs: ${rate(3)} · 5 reefs: ${rate(5)} · 7 reefs: ${rate(7)}. Every course is priced to return 97% over time; past runs never change the next.</p>
+    <h4 style="margin:10px 0 4px">Milestones · ${got} of ${ACH.length}</h4>
+    <ul class="ach">${ACH.map((a) => `<li class="${ach[a[0]] ? '' : 'off'}"><span aria-hidden="true">${ach[a[0]] ? a[1] : '🔒'}</span> <b>${esc(a[2])}</b><br><span class="hint">${esc(a[3])}${!ach[a[0]] && { 'ten-runs': 10, fifty: 50, hundred: 100 }[a[0]] ? ` (${Math.min(st.runs, { 'ten-runs': 10, fifty: 50, hundred: 100 }[a[0]])}/${{ 'ten-runs': 10, fifty: 50, hundred: 100 }[a[0]]})` : ''}</span><span class="sr-only">${ach[a[0]] ? ' — earned' : ' — not yet'}</span></li>`).join('')}</ul>`;
+}
+$('stats-btn').addEventListener('click', () => { if(running) return; renderStats(); $('dlg-stats').showModal(); setTimeout(() => $('stats-t').focus(), 0); });
+document.querySelectorAll('dialog [data-close]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
+
+/* ---------------- the Daily chart: one chart a day, the same for everyone ---------------- */
+// Five reefs placed from the date, one course per day, scored by the × it
+// survives (0 if wrecked). For fun and bragging — the chart comes from the
+// date, so unlike a Tide run it isn't sealed against peeking.
+const DAILY_STAKE = 100;
+// each day's chart has its own reef count: 3, 5 or 7, from the date
+const dailyReefsFor = (date) => { let h = 0; for(const ch of date) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return REEF_OPTIONS[h % REEF_OPTIONS.length]; };
+let DAILY_REEFS = dailyReefsFor(new Date().toISOString().slice(0, 10));
+const refreshDailyReefs = () => { DAILY_REEFS = dailyReefsFor(todayUTC()); if(mode === 'daily' && !running) reefCount = DAILY_REEFS; };
+const todayUTC = () => new Date().toISOString().slice(0, 10);
+const loadDaily = () => { const v = load('reef-daily', null); return v && typeof v === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(v.date) && okPicks(v.picks) && typeof v.won === 'boolean' && (v.reefs == null || REEF_OPTIONS.includes(v.reefs)) && isInt(v.mult) && v.mult >= 0 && Array.isArray(v.reefTiles) && v.reefTiles.every((t) => isInt(t) && t >= 0 && t < GRID) && (!v.hits || (Array.isArray(v.hits) && v.hits.every((t) => isInt(t) && t >= 0 && t < GRID))) ? v : null; };
+const dailyDone = () => { const d = loadDaily(); return d && d.date === todayUTC() ? d : null; };
+function bookDaily({ seedHex, picksIn }){
+  const out = settle({ picks: picksIn, reefs: DAILY_REEFS, stake: DAILY_STAKE, seedHex });
+  const mult = out.won ? quote(DAILY_REEFS, picksIn.length, DAILY_STAKE).multiplier : 0;
+  if(!save('reef-daily', { date: todayUTC(), reefs: DAILY_REEFS, picks: picksIn, won: out.won, mult: Math.round(mult * 100), reefTiles: out.reefTiles, hits: out.hits })) throw new Error('storage full');
+  const sc = load('reef-dailies', {}); const scores = sc && typeof sc === 'object' && !Array.isArray(sc) ? sc : {}; scores[todayUTC()] = Math.round(mult * 100); save('reef-dailies', scores);
+  veil = { gain: 0, n: -1 };
+  return out;
+}
+function dailyStreak(){ const raw = load('reef-dailies', {}), sc = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}; let n = 0; const d = new Date(); if(!(todayUTC() in sc)) d.setUTCDate(d.getUTCDate() - 1); while(d.toISOString().slice(0, 10) in sc){ n++; d.setUTCDate(d.getUTCDate() - 1); } return n; }
+function untilMidnight(){ const n = new Date(), m = new Date(n); m.setUTCHours(24, 0, 0, 0); const mins = Math.round((m - n) / 60000); return `${Math.floor(mins / 60)}h ${mins % 60}m`; }
+// a sailed daily shows its story on the chart: the soundings and the reefs
+function paintDaily(d){ if(!d) return; revealed = {}; const rs = new Set(d.reefTiles); d.picks.forEach((t) => { revealed[t] = rs.has(t) ? 'reef' : 'clear'; }); ghostReefs = d.reefTiles; fatalTile = d.hits && d.hits.length ? d.hits[0] : null; lastRun = { picks: [...d.picks], won: d.won }; }
+// how a score ranks against a fleet that picks each course length (1–10) alike:
+// a captain with K tiles scores that length's × if clear, 0 if wrecked
+function fleetRank(reefs, score){
+  if(!score) return 0;
+  let beat = 0;
+  for(let k = 1; k <= MAX_PICKS; k++){ const q = quote(reefs, k, 100); beat += (q.multiplier < score - 1e-9 ? 1 : 1 - q.chance) / MAX_PICKS; }
+  return Math.round(beat * 100);
+}
+function showDaily(){
+  const d = dailyDone(); if(!d) return;
+  const reefSet = new Set(d.reefTiles), mine = new Set(d.picks);
+  let grid = ''; for(let i = 0; i < GRID; i++){ grid += mine.has(i) ? (reefSet.has(i) ? '💥' : '🟦') : (reefSet.has(i) ? '🪨' : '⬜'); if(i % COLS === COLS - 1 && i < GRID - 1) grid += '\n'; }
+  const score = d.won ? `× ${(d.mult / 100).toFixed(2)}` : 'wrecked';
+  const rank = fleetRank(d.reefs || 5, d.won ? d.mult / 100 : 0);
+  const fleetWreck = Math.round([...Array(MAX_PICKS)].reduce((a, _, i) => a + (1 - quote(d.reefs || 5, i + 1, 100).chance), 0) / MAX_PICKS * 100);
+  // the shared strip follows the sailing order and carries no positions — it can't help anyone with today's chart
+  const sgrid = d.picks.map((t) => (reefSet.has(t) ? '💥' : '🟦')).join('');
+  const text = `🪸 Reef Run — Daily ${d.date} (${d.reefs || 5} reefs)\n${sgrid}\n${d.picks.length} tiles · ${score}${d.won ? ` · beat ${rank}% of the fleet` : ` · ${fleetWreck}% of the fleet wrecked too`}\nhttps://tide-games.github.io/reef-run/`;
+  $('daily-body').innerHTML = `<p style="margin:0">${d.won && d.picks.length <= 2 ? `<b>Beat ${rank}% of the fleet.</b> Longer courses can beat more of it. ` : d.won ? `<b>Beat ${rank}% of the fleet.</b> ` : `<b>${fleetWreck}% of the fleet wrecked too.</b> `}${d.won ? `Clean passage through ${d.picks.length} tile${d.picks.length > 1 ? 's' : ''} — today’s score <b>${score}</b>.` : `Wrecked on ${tileName(d.hits && d.hits.length ? d.hits[0] : d.picks[0])} — your ${d.picks.length}-tile course hit a reef.`}</p>
+    <div class="share" role="img" aria-label="Your course: ${d.picks.length} tiles, ${d.won ? 'all clear' : 'hit a reef'}">${esc(grid)}</div>
+    <details class="hint"><summary>How it works</summary>🟦 your clear tiles · 💥 a reef on your course · 🪨 reefs you missed. Everyone gets the same chart today. “The fleet” is every captain choosing each course length alike. The copied result is a strip in sailing order, with no positions — no spoilers. The chart comes from the date, so it’s for fun, not sealed like a Tide run.</details>
+    <p><button class="btn" id="daily-copy">Copy result</button> <button class="btn" style="background:#fff;color:var(--ink);border:1px solid var(--line)" data-close>Close</button></p>
+    <p class="hint">${dailyStreak() > 1 ? `🔥 ${dailyStreak()}-day streak · ` : ''}A new chart in ${untilMidnight()}.</p>`;
+  $('daily-body').querySelector('[data-close]').addEventListener('click', () => $('dlg-daily').close());
+  $('daily-copy').addEventListener('click', async (e) => { try { await navigator.clipboard.writeText(text); e.target.textContent = 'Copied ✓'; } catch { e.target.textContent = 'Select the grid to copy'; } });
+  if(!$('dlg-daily').open) $('dlg-daily').showModal();
+  announce(d.won ? `Beat ${rank} percent of the fleet. Today's score times ${(d.mult / 100).toFixed(2)}.` : `${fleetWreck} percent of the fleet wrecked too.`);
+  setTimeout(() => $('daily-t').focus(), 0);
+}
+
+let allInAt = 0, oldTabNagged = false;
+let reefBeforeDaily = null, ride = null, allInOk = false, riding = false, rideLost = null;   // ride: { base, n } while letting winnings ride
+let placing = false;
 $('go-btn').addEventListener('click', async ()=>{
-  const st=stakeVal();
-  if(running||!picks.length||st<=0||st>purse||(mode==='tide'&&pending)) return;
-  ac().resume?.();
-  if(mode==='tide'){ try{ await tideRun(); }catch{ showBanner('The tide is out of reach','Could not reach the chain — check your connection and try again.'); } }
-  else practiceRun();
+  if(placing || running) return;
+  refreshDailyReefs();
+  if(mode === 'daily' && dailyDone()){ showDaily(); return; }
+  if($('go-btn').getAttribute('aria-disabled') === 'true'){ announce($('go-btn').textContent, true); return; }
+  if(mode !== 'daily' && picks.length && stakeVal() === purse && purse >= 100 && quote(reefCount, picks.length, purse).chance < 0.1 && (!allInOk || performance.now() - allInAt < 500)){
+    if(!allInOk){ allInOk = true; allInAt = performance.now(); const c = (quote(reefCount, picks.length, purse).chance * 100).toFixed(1);
+      $('go-btn').textContent = `Press again to stake everything at ${c}%`; $('go-btn').classList.add('arm'); announce(`That stakes the whole purse at ${c} percent odds. Press again to confirm.`, true); }
+    return;
+  }
+  allInOk = false;
+  if(ride && !riding) ride = null;   // any other sail ends the ride — at the stake shown
+  riding = false;
+  const st = mode === 'daily' ? DAILY_STAKE : stakeVal(), course = [...picks], reefs = mode === 'daily' ? DAILY_REEFS : reefCount, m = mode;
+  if(!course.length || st <= 0 || (m !== 'daily' && st > purse) || (m==='tide' && pending)) return;
+  placing = true; renderSlip(); $('last-line').textContent = ''; ac().resume?.();
+  let args = null, out = null;
+  try {
+    // the slow parts come first: a fresh, checked tip — or the practice seed
+    const tip = m === 'tide' ? (tipAt = 0, await fetchTip()) : null;
+    const seed = m === 'tide' ? null : m === 'daily' ? await sha256hex(`reef-daily|${todayUTC()}`) : await sha256hex('practice|' + randHex(16));
+    await withLedger(async () => {
+      if(running) return;
+      if(m === 'daily'){ if(dailyDone()) return; args = { seedHex: seed, picksIn: course, reefs, stake: st, daily: true }; try { out = bookDaily(args); } catch { out = null; showBanner('Could not save', 'This browser’s storage is full — today’s chart wasn’t sailed.'); } return; }
+      if(st > purse){ showBanner('Not enough doubloons', `The purse holds ${fmt(purse)}.`); announce(`Not enough doubloons: the purse holds ${fmt(purse)}.`, true); return; }
+      if(m === 'tide'){
+        if(pending){ picks = [...pending.picks]; reefCount = pending.reefs; showBanner('Already sealed', 'Another tab sealed a course a moment ago — it is shown here.'); announce('Another tab already sealed a course.', true); return; }
+        const height = tip + 1, mark = randHex(16);   // a block nobody has seen
+        const p = { height, mark, reefs, picks: course, stake: st, placedAt: Date.now(), chain: CHAIN };
+        if(!save(LS.pending, p)){ showBanner('Could not save', 'This browser’s storage is full — the course was not sealed and nothing was staked.'); announce('Could not save: storage is full. Nothing was staked.', true); return; }
+        if(!save(LS.purse, purse - st)){ save(LS.pending, null); showBanner('Could not save', 'This browser’s storage is full — nothing was staked.'); return; }
+        purse -= st; pending = p; pendingKey = LS.pending;
+        showBanner('The course is sealed', `Block <b>${fmt(height)}</b> — the next one to be mined — will place the reefs. Your ${fmt(st)} is held until then: about 20 minutes.`);
+        announce(`Course sealed to block ${fmt(height)}. About 20 minutes.`, true); clearTimeout(renderSlip.t); renderSlip.last = '';
+        return;
+      }
+      if(!save(LS.purse, purse - st)){ showBanner('Could not save', 'This browser’s storage is full — nothing was staked.'); return; }
+      purse -= st;
+      args = { seedHex: seed, picksIn: course, reefs, stake: st };
+      try { out = bookRun(args); } catch { save(LS.purse, purse + st); purse += st; showBanner('Could not save', 'This browser’s storage is full — nothing was staked.'); return; }
+    });
+  } catch(e) {
+    showBanner('The tide is out of reach', 'Could not reach the chain — check your connection and try again.');
+    announce('The tide is out of reach: could not reach the chain. Check your connection and try again.', true);
+  } finally { placing = false; renderAll(); if(pending) watchTide(); }
+  if(out) await safeRun(args, out);
 });
 $('sound-btn').addEventListener('click',()=>{ soundOn=!soundOn; save(LS.sound,soundOn); renderHeader(); if(soundOn) blip(); });
 
+addEventListener('storage', (e) => {
+  if((e.key === 'reef-purse' || e.key === 'reef-pending') && !oldTabNagged){ oldTabNagged = true; showBanner('An older Reef Run is open', 'Another tab is running the previous version of this page — close it; plays there won’t count here.'); return; }
+  if(!e.key || !e.key.startsWith('reef-') || running || placing) return;
+  const hadPending = !!pending, hadMark = pending && pending.mark;
+  readState();
+  if(hadMark && !pending && mode === 'tide' && log.some((r) => r.mark === hadMark)) return;   // replaySettled tells it shownPurse = purse; $('purse').textContent = fmt(purse);
+  if(pending && mode === 'tide'){ picks = [...pending.picks]; reefCount = pending.reefs; renderReefSeg(); if(!hadPending) announce('Another tab sealed a course — it is shown here.', true); }
+  renderAll(); if(pending) watchTide();
+});
 /* ---------------- boot ---------------- */
-if(purse<=0 && !pending){ purse = 1000; save(LS.purse, purse); }
-if(pending){ picks = [...pending.picks]; reefCount = pending.reefs; }
+{ const m = load('reef-mode', 'practice'); if(m === 'daily' && !pending){ mode = 'daily'; reefBeforeDaily = reefCount; reefCount = DAILY_REEFS; const d = dailyDone(); if(d){ picks = [...d.picks]; setTimeout(() => paintDaily(d), 0); } $('mode').querySelectorAll('button').forEach((x) => { x.classList.toggle('on', x.dataset.mode === 'daily'); x.setAttribute('aria-pressed', String(x.dataset.mode === 'daily')); }); }
+ else if(m === 'tide' || pending) { mode = 'tide'; $('mode').querySelectorAll('button').forEach((x) => { x.classList.toggle('on', x.dataset.mode === 'tide'); x.setAttribute('aria-pressed', String(x.dataset.mode === 'tide')); }); } }
+if(pending && mode === 'tide'){ picks = [...pending.picks]; reefCount = pending.reefs; }
+setTimeout(checkWreck, 600);   // a broke sailor is refitted with a word, not silently
 shownPurse = purse; $('purse').textContent = fmt(purse);
 renderAll(); syncOverlay();
 fetchTip().catch(()=>{ $('tide-height').textContent='offline'; });
